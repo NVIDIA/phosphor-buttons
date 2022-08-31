@@ -4,20 +4,33 @@
 #include "gpio.hpp"
 #include "xyz/openbmc_project/Chassis/Common/error.hpp"
 
+#include <boost/asio/io_service.hpp>
 #include <phosphor-logging/elog-errors.hpp>
+#include <phosphor-logging/lg2.hpp>
+
 // This is the base class for all the button interface types
 //
 class ButtonIface
 {
   public:
-    ButtonIface(sdbusplus::bus::bus& bus, EventPtr& event,
-                buttonConfig& buttonCfg,
-                sd_event_io_handler_t handler = ButtonIface::EventHandler) :
+    ButtonIface(sdbusplus::bus::bus& bus, buttonConfig& buttonCfg,
+                boost::asio::io_service& io,
+                const std::function<void(void*, bool, std::string)> handler =
+                    ButtonIface::EventHandler) :
         bus(bus),
-        event(event), config(buttonCfg), callbackHandler(handler)
+        config(buttonCfg), callbackHandler(handler)
     {
         int ret = -1;
 
+        // Create a new stream descriptor for each gpio
+        // Also give each gpio a callback handler and userdata pointer
+        for (auto& config : config.gpios)
+        {
+            config.streamDesc =
+                std::make_shared<boost::asio::posix::stream_descriptor>(io);
+            config.handler = callbackHandler;
+            config.userdata = (void*)this;
+        }
         // config group gpio based on the gpio defs read from the json file
         ret = configGroupGpio(config);
 
@@ -39,14 +52,14 @@ class ButtonIface
      * init() function can be created to override the default event handling.
      */
 
-    virtual void handleEvent(sd_event_source* es, int fd, uint32_t revents) = 0;
-    static int EventHandler(sd_event_source* es, int fd, uint32_t revents,
-                            void* userdata)
+    virtual void handleEvent(bool asserted, std::string gpio_name) = 0;
+    static int EventHandler(void* userdata, bool asserted,
+                            std::string gpio_name)
     {
         if (userdata)
         {
             ButtonIface* buttonIface = static_cast<ButtonIface*>(userdata);
-            buttonIface->handleEvent(es, fd, revents);
+            buttonIface->handleEvent(asserted, gpio_name);
         }
 
         return 0;
@@ -66,34 +79,8 @@ class ButtonIface
      */
 
     virtual void init()
-    {
-        // initialize the button io fd from the buttonConfig
-        // which has fd stored when configGroupGpio is called
-        for (auto gpioCfg : config.gpios)
-        {
-            char buf;
-            int fd = gpioCfg.fd;
+    {}
 
-            int ret = ::read(fd, &buf, sizeof(buf));
-            if (ret < 0)
-            {
-                phosphor::logging::log<phosphor::logging::level::ERR>(
-                    (getFormFactorType() + " : read error!").c_str());
-            }
-
-            ret = sd_event_add_io(event.get(), nullptr, fd, EPOLLPRI,
-                                  callbackHandler, this);
-            if (ret < 0)
-            {
-                phosphor::logging::log<phosphor::logging::level::ERR>(
-                    (getFormFactorType() + " : failed to add to event loop")
-                        .c_str());
-                ::closeGpio(fd);
-                throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
-                    IOError();
-            }
-        }
-    }
     /**
      * @brief similar to init() oem specific deinitialization can be done under
      * deInit function. if platform specific deinitialization is needed then a
@@ -102,14 +89,13 @@ class ButtonIface
      */
     virtual void deInit()
     {
-        for (auto gpioCfg : config.gpios)
+        for (auto& gpioCfg : config.gpios)
         {
-            ::closeGpio(gpioCfg.fd);
+            ::closeGpio(gpioCfg.button_name);
         }
     }
 
     sdbusplus::bus::bus& bus;
-    EventPtr& event;
     buttonConfig config;
-    sd_event_io_handler_t callbackHandler;
+    const std::function<void(void*, bool, std::string)> callbackHandler;
 };

@@ -18,10 +18,13 @@
 
 #include "gpio.hpp"
 
+#include "xyz/openbmc_project/Chassis/Common/error.hpp"
+
 #include <error.h>
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <gpiod.hpp>
 #include <gpioplus/utility/aspeed.hpp>
 #include <nlohmann/json.hpp>
 #include <phosphor-logging/lg2.hpp>
@@ -30,15 +33,60 @@
 #include <fstream>
 
 const std::string gpioDev = "/sys/class/gpio";
+std::map<std::string, gpiod::line> allGpios;
 
 namespace fs = std::filesystem;
 
-void closeGpio(int fd)
+void closeAllGpio()
 {
-    if (fd > 0)
+    // Loop through all gpios and close them
+    std::string msg = "Closing all button gpio lines.";
+    lg2::info(msg.c_str());
+    while (allGpios.size() != 0)
     {
-        ::close(fd);
+        auto it = allGpios.begin();
+        closeGpio(it->first);
     }
+}
+
+void closeGpio(const std::string& buttonName)
+{
+    // Find the GPIO line
+    gpiod::line gpioLine;
+    try
+    {
+        gpioLine = allGpios.at(buttonName);
+    }
+    catch (const std::exception& e)
+    {
+        std::string errMsg = "Button name not found: " + buttonName;
+        lg2::error(errMsg.c_str());
+        return;
+    }
+    if (!gpioLine)
+    {
+        std::string errMsg = "Failed to find the " + buttonName + " line";
+        lg2::error(errMsg.c_str());
+        return;
+    }
+    try
+    {
+        // Try to release the line
+        if (gpioLine.is_used())
+        {
+            gpioLine.release();
+        }
+        // Erase the line from allGpios
+        allGpios.erase(buttonName);
+    }
+    catch (const std::exception& e)
+    {
+        std::string errMsg = "Failed to release the " + buttonName + " line";
+        lg2::error(errMsg.c_str());
+        return;
+    }
+    std::string msg = "Released the " + buttonName + " line";
+    lg2::info(msg.c_str());
 }
 
 uint32_t getGpioBase()
@@ -75,15 +123,6 @@ uint32_t getGpioBase()
 #endif
 }
 
-uint32_t getGpioNum(const std::string& gpioPin)
-{
-    // gpioplus promises that they will figure out how to easily
-    // support multiple BMC vendors when the time comes.
-    auto offset = gpioplus::utility::aspeed::nameToOffset(gpioPin);
-
-    return getGpioBase() + offset;
-}
-
 int configGroupGpio(buttonConfig& buttonIFConfig)
 {
     int result = 0;
@@ -95,7 +134,7 @@ int configGroupGpio(buttonConfig& buttonIFConfig)
         if (result < 0)
         {
             lg2::error("{NAME}: Error configuring gpio-{NUM}: {RESULT}", "NAME",
-                       buttonIFConfig.formFactorName, "NUM", gpioCfg.number,
+                       buttonIFConfig.formFactorName, "NUM", gpioCfg.gpio_name,
                        "RESULT", result);
 
             break;
@@ -105,151 +144,108 @@ int configGroupGpio(buttonConfig& buttonIFConfig)
     return result;
 }
 
+static void waitForGPIOEvent(gpioInfo& gpioConfig)
+{
+    // This is an async function that is called upon a change
+    // to the gpio that is being watched
+    gpioConfig.streamDesc.get()->async_wait(
+        boost::asio::posix::stream_descriptor::wait_read,
+        [&gpioConfig](const boost::system::error_code ec) {
+            if (gpioConfig.button_name == "")
+            {
+                lg2::error("Name for button is an empty string");
+                throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
+                    IOError();
+            }
+            if (ec)
+            {
+                closeAllGpio();
+                std::string errMsg = gpioConfig.button_name +
+                                     " fd handler error: " + ec.message();
+                lg2::error(errMsg.c_str());
+                // TODO: throw here to force power-control to restart?
+                throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
+                    IOError();
+            }
+            if (!gpioConfig.userdata)
+            {
+                closeAllGpio();
+                std::string errMsg = "Failed to find the " +
+                                     gpioConfig.button_name + " userdata";
+                lg2::error(errMsg.c_str());
+                throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
+                    IOError();
+            }
+            if (!gpioConfig.handler)
+            {
+                closeAllGpio();
+                std::string errMsg =
+                    "Failed to find the " + gpioConfig.button_name + " handler";
+                lg2::error(errMsg.c_str());
+                throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
+                    IOError();
+            }
+            gpiod::line_event line_event = gpioConfig.line.event_read();
+            gpioConfig.handler(gpioConfig.userdata,
+                               line_event.event_type == gpioConfig.direction,
+                               gpioConfig.gpio_name);
+            waitForGPIOEvent(gpioConfig);
+        });
+}
+
 int configGpio(gpioInfo& gpioConfig)
 {
-    auto gpioNum = gpioConfig.number;
-    auto gpioDirection = gpioConfig.direction;
-
-    std::string devPath{gpioDev};
-
-    std::fstream stream;
-
-    stream.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
-    devPath += "/gpio" + std::to_string(gpioNum) + "/value";
-
-    fs::path fullPath(devPath);
-
-    if (fs::exists(fullPath))
+    // Find the GPIO line
+    gpioConfig.line = gpiod::find_line(gpioConfig.gpio_name);
+    if (!gpioConfig.line)
     {
-        lg2::info("GPIO exported: {PATH}", "PATH", devPath);
-    }
-    else
-    {
-        devPath = gpioDev + "/export";
-
-        stream.open(devPath, std::fstream::out);
-        try
-        {
-            stream << gpioNum;
-            stream.close();
-        }
-
-        catch (const std::exception& e)
-        {
-            lg2::error("{NUM} error in writing {PATH}: {ERROR}", "NUM", gpioNum,
-                       "PATH", devPath, "ERROR", e);
-            return -1;
-        }
-    }
-
-    if (gpioDirection == "out")
-    {
-        devPath = gpioDev + "/gpio" + std::to_string(gpioNum) + "/value";
-
-        uint32_t currentValue;
-
-        stream.open(devPath, std::fstream::in);
-        try
-        {
-            stream >> currentValue;
-            stream.close();
-        }
-
-        catch (const std::exception& e)
-        {
-            lg2::error("Error in reading {PATH}: {ERROR}", "PATH", devPath,
-                       "ERROR", e);
-            return -1;
-        }
-
-        const char* direction = currentValue ? "high" : "low";
-
-        devPath.clear();
-        devPath = gpioDev + "/gpio" + std::to_string(gpioNum) + "/direction";
-
-        stream.open(devPath, std::fstream::out);
-        try
-        {
-            stream << direction;
-            stream.close();
-        }
-
-        catch (const std::exception& e)
-        {
-            lg2::error("Error in writing: {ERROR}", "ERROR", e);
-            return -1;
-        }
-    }
-    else if (gpioDirection == "in")
-    {
-        devPath = gpioDev + "/gpio" + std::to_string(gpioNum) + "/direction";
-
-        stream.open(devPath, std::fstream::out);
-        try
-        {
-            stream << gpioDirection;
-            stream.close();
-        }
-
-        catch (const std::exception& e)
-        {
-            lg2::error("Error in writing: {ERROR}", "ERROR", e);
-            return -1;
-        }
-    }
-    else if ((gpioDirection == "both"))
-    {
-        devPath = gpioDev + "/gpio" + std::to_string(gpioNum) + "/direction";
-
-        stream.open(devPath, std::fstream::out);
-        try
-        {
-            // Before set gpio configure as an interrupt pin, need to set
-            // direction as 'in' or edge can't set as 'rising', 'falling' and
-            // 'both'
-            const char* in_direction = "in";
-            stream << in_direction;
-            stream.close();
-        }
-
-        catch (const std::exception& e)
-        {
-            lg2::error("Error in writing: {ERROR}", "ERROR", e);
-            return -1;
-        }
-        devPath.clear();
-
-        // For gpio configured as ‘both’, it is an interrupt pin and trigged on
-        // both rising and falling signals
-        devPath = gpioDev + "/gpio" + std::to_string(gpioNum) + "/edge";
-
-        stream.open(devPath, std::fstream::out);
-        try
-        {
-            stream << gpioDirection;
-            stream.close();
-        }
-
-        catch (const std::exception& e)
-        {
-            lg2::error("Error in writing: {ERROR}", "ERROR", e);
-            return -1;
-        }
-    }
-
-    devPath = gpioDev + "/gpio" + std::to_string(gpioNum) + "/value";
-
-    auto fd = ::open(devPath.c_str(), O_RDWR | O_NONBLOCK);
-
-    if (fd < 0)
-    {
-        lg2::error("Open {PATH} error: {ERROR}", "PATH", devPath, "ERROR",
-                   errno);
+        std::string errMsg = "Failed to find the " + gpioConfig.gpio_name +
+                             " line for " + gpioConfig.button_name;
+        lg2::error(errMsg.c_str());
         return -1;
     }
 
-    gpioConfig.fd = fd;
+    // Add this gpio to map of all gpios
+    allGpios[gpioConfig.button_name] = gpioConfig.line;
+    try
+    {
+        gpioConfig.line.request(
+            {"button-handler", gpiod::line_request::EVENT_BOTH_EDGES, {}});
+    }
+    catch (const std::exception&)
+    {
+        closeAllGpio();
+        std::string errMsg =
+            "Failed to request events for " + gpioConfig.button_name;
+        lg2::error(errMsg.c_str());
+        return -1;
+    }
 
+    // Get a file descriptor to be used for this event
+    int gpioLineFd = gpioConfig.line.event_get_fd();
+    if (gpioLineFd < 0)
+    {
+        closeAllGpio();
+        std::string errMsg = "Failed to name " + gpioConfig.button_name + " fd";
+        lg2::error(errMsg.c_str());
+        return -1;
+    }
+    try
+    {
+        // Assign the fd to this stream descriptor
+        gpioConfig.streamDesc.get()->assign(gpioLineFd);
+    }
+    catch (const std::exception&)
+    {
+        closeAllGpio();
+        std::string errMsg = "Failed assign line to stream descriptor for " +
+                             gpioConfig.button_name;
+        lg2::error(errMsg.c_str());
+        return -1;
+    }
+
+    std::string msg = "Button GPIO configured: " + gpioConfig.button_name;
+    lg2::info(msg.c_str());
+    waitForGPIOEvent(gpioConfig);
     return 0;
 }

@@ -15,6 +15,9 @@
 */
 #pragma once
 
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp>
+#include <gpiod.hpp>
 #include <nlohmann/json.hpp>
 #include <sdbusplus/bus.hpp>
 
@@ -24,9 +27,49 @@
 // this struct has the gpio config for single gpio
 struct gpioInfo
 {
-    int fd; // io fd mapped with the gpio
-    uint32_t number;
-    std::string direction;
+    std::string button_name;
+    std::string gpio_name;
+    int direction;
+    gpiod::line line;
+    std::shared_ptr<boost::asio::posix::stream_descriptor> streamDesc;
+    void* userdata;
+    std::function<void(void*, bool, std::string)> handler;
+
+    gpioInfo(const std::string button_name, const std::string gpio_name,
+             const std::string direction) :
+        button_name(button_name),
+        gpio_name(gpio_name), streamDesc(nullptr), userdata(nullptr),
+        handler(nullptr)
+    {
+        setDirection(direction);
+    }
+
+    gpioInfo(const gpioInfo& src) :
+        button_name(src.button_name), gpio_name(src.gpio_name),
+        direction(src.direction), line(src.line), streamDesc(src.streamDesc),
+        userdata(src.userdata), handler(src.handler)
+    {}
+
+    ~gpioInfo()
+    {
+        if (streamDesc.get() != NULL)
+        {
+            streamDesc.reset();
+        }
+    }
+
+    void setDirection(std::string dirStr)
+    {
+        // Determine edge type. Default is falling edge means asserted.
+        auto dir = gpiod::line_event::FALLING_EDGE;
+        std::for_each(dirStr.begin(), dirStr.end(),
+                      [](char& c) { c = ::tolower(c); });
+        if (dirStr == "rising")
+        {
+            dir = gpiod::line_event::RISING_EDGE;
+        }
+        this->direction = dir;
+    }
 };
 
 // this struct represents button interface
@@ -44,7 +87,7 @@ struct buttonConfig
  * @return int returns 0 on successful config of all gpios
  */
 
-int configGroupGpio(buttonConfig& buttonCfg);
+int configGroupGpio(buttonConfig& buttonIFConfig);
 
 /**
  * @brief  configures and initializes the single gpio
@@ -54,6 +97,7 @@ int configGroupGpio(buttonConfig& buttonCfg);
 int configGpio(gpioInfo& gpioConfig);
 
 uint32_t getGpioNum(const std::string& gpioPin);
-void closeGpio(int fd);
+void closeAllGpio();
+void closeGpio(const std::string& buttonName);
 // global json object which holds gpio_defs.json configs
 extern nlohmann::json gpioDefs;

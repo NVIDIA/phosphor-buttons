@@ -26,6 +26,7 @@
 
 #include <unistd.h>
 
+#include <boost/asio/io_service.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 
 static constexpr std::string_view ID_BUTTON = "ID_BTN";
@@ -36,12 +37,12 @@ class IDButton :
     public ButtonIface
 {
   public:
-    IDButton(sdbusplus::bus::bus& bus, const char* path, EventPtr& event,
-             buttonConfig& buttonCfg) :
+    IDButton(sdbusplus::bus::bus& bus, const char* path,
+             buttonConfig& buttonCfg, boost::asio::io_service& io) :
         sdbusplus::server::object::object<
             sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::ID>(
             bus, path),
-        ButtonIface(bus, event, buttonCfg)
+        ButtonIface(bus, buttonCfg, io)
     {
         init();
     }
@@ -53,6 +54,8 @@ class IDButton :
 
     void simPress() override;
 
+    void handleEvent(bool asserted, std::string /* gpio_name */) override;
+
     static constexpr std::string_view getFormFactorName()
     {
         return ID_BUTTON;
@@ -61,6 +64,4 @@ class IDButton :
     {
         return ID_DBUS_OBJECT_NAME;
     }
-
-    void handleEvent(sd_event_source* es, int fd, uint32_t revents) override;
 };

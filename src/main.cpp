@@ -16,14 +16,20 @@
 
 #include "button_factory.hpp"
 #include "gpio.hpp"
+#include "xyz/openbmc_project/Chassis/Buttons/Reset/server.hpp"
 
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/posix/stream_descriptor.hpp>
+#include <gpiod.hpp>
 #include <nlohmann/json.hpp>
 #include <phosphor-logging/elog-errors.hpp>
+#include <sdbusplus/asio/object_server.hpp>
 
 #include <fstream>
 static constexpr auto gpioDefFile = "/etc/default/obmc/gpio/gpio_defs.json";
 
 nlohmann::json gpioDefs;
+boost::asio::io_service io;
 
 int main(void)
 {
@@ -32,24 +38,16 @@ int main(void)
     phosphor::logging::log<phosphor::logging::level::INFO>(
         "Start Phosphor buttons service...");
 
-    sd_event* event = nullptr;
-    ret = sd_event_default(&event);
-    if (ret < 0)
-    {
-        phosphor::logging::log<phosphor::logging::level::ERR>(
-            "Error creating a default sd_event handler");
-        return ret;
-    }
-    EventPtr eventP{event};
-    event = nullptr;
+    std::shared_ptr<sdbusplus::asio::connection> conn =
+        std::make_shared<sdbusplus::asio::connection>(io);
 
     sdbusplus::bus::bus bus = sdbusplus::bus::new_default();
     sdbusplus::server::manager::manager objManager{
         bus, "/xyz/openbmc_project/Chassis/Buttons"};
 
     bus.request_name("xyz.openbmc_project.Chassis.Buttons");
-    //
     std::vector<std::unique_ptr<ButtonIface>> buttonInterfaces;
+    std::vector<buttonConfig> allBtnCfgs;
 
     std::ifstream gpios{gpioDefFile};
     auto gpioDefJson = nlohmann::json::parse(gpios, nullptr, true);
@@ -57,7 +55,6 @@ int main(void)
 
     // load gpio config from gpio defs json file and create button interface
     // objects based on the button form factor type
-
     for (const auto& gpioConfig : gpioDefs)
     {
         std::string formFactorName = gpioConfig["name"];
@@ -74,21 +71,23 @@ int main(void)
 
             for (const auto& config : groupGpio)
             {
-                gpioInfo gpioCfg;
-                gpioCfg.number = getGpioNum(config["pin"]);
-                gpioCfg.direction = config["direction"];
+                gpioInfo gpioCfg = gpioInfo{config["name"], config["gpio_name"],
+                                            config["direction"]};
                 buttonCfg.gpios.push_back(gpioCfg);
             }
         }
         else
         {
-            gpioInfo gpioCfg;
-            gpioCfg.number = getGpioNum(gpioConfig["pin"]);
-            gpioCfg.direction = gpioConfig["direction"];
+            gpioInfo gpioCfg =
+                gpioInfo{gpioConfig["name"], gpioConfig["gpio_name"],
+                         gpioConfig["direction"]};
             buttonCfg.gpios.push_back(gpioCfg);
         }
+
+        // Call button factory to create instances of this button
         auto tempButtonIf = ButtonFactory::instance().createInstance(
-            formFactorName, bus, eventP, buttonCfg);
+            formFactorName, bus, buttonCfg, io);
+
         /* There are additional gpio configs present in some platforms
          that are not supported in phosphor-buttons.
         But they may be used by other applications. so skipping such configs
@@ -97,23 +96,23 @@ int main(void)
         {
             buttonInterfaces.emplace_back(std::move(tempButtonIf));
         }
+        allBtnCfgs.push_back(std::move(buttonCfg));
     }
+    phosphor::logging::log<phosphor::logging::level::INFO>(
+        "Finished configuring buttons.");
 
     try
     {
-        bus.attach_event(eventP.get(), SD_EVENT_PRIORITY_NORMAL);
-        ret = sd_event_loop(eventP.get());
-        if (ret < 0)
-        {
-            phosphor::logging::log<phosphor::logging::level::ERR>(
-                "Error occurred during the sd_event_loop",
-                phosphor::logging::entry("RET=%d", ret));
-        }
+        // Start asynchronous processes (blocking function)
+        io.run();
     }
     catch (const std::exception& e)
     {
         phosphor::logging::log<phosphor::logging::level::ERR>(e.what());
         ret = -1;
     }
+    // Close all potential gpio lines
+    std::for_each(allBtnCfgs.begin(), allBtnCfgs.end(),
+                  [](auto& cfg) { cfg.gpios.clear(); });
     return ret;
 }

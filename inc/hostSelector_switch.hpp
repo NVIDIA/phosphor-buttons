@@ -33,12 +33,12 @@ class HostSelector final :
     public ButtonIface
 {
   public:
-    HostSelector(sdbusplus::bus::bus& bus, const char* path, EventPtr& event,
-                 buttonConfig& buttonCfg) :
+    HostSelector(sdbusplus::bus::bus& bus, const char* path,
+                 buttonConfig& buttonCfg, boost::asio::io_service& io) :
         sdbusplus::server::object_t<sdbusplus::xyz::openbmc_project::Chassis::
                                         Buttons::server::HostSelector>(
             bus, path, action::defer_emit),
-        ButtonIface(bus, event, buttonCfg)
+        ButtonIface(bus, buttonCfg, io)
     {
         init();
         // read and store the host selector position Map
@@ -64,11 +64,11 @@ class HostSelector final :
     {
         return HS_DBUS_OBJECT_NAME;
     }
-    void handleEvent(sd_event_source* es, int fd, uint32_t revents) override;
+    void handleEvent(bool asserted, std::string gpio_name) override;
     size_t getMappedHSConfig(size_t hsPosition);
-    size_t getGpioIndex(int fd);
+    size_t getGpioIndex(std::string gpio_name);
     void setInitialHostSelectorValue(void);
-    void setHostSelectorValue(int fd, GpioState state);
+    void setHostSelectorValue(std::string gpio_name, GpioState state);
 
   protected:
     size_t hostSelectorPosition = 0;

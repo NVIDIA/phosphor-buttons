@@ -31,6 +31,7 @@ sdbusplus_dep = dependency('sdbusplus')
 phosphor_dbus_interfaces_dep = dependency('phosphor-dbus-interfaces')
 phosphor_logging_dep = dependency('phosphor-logging')
 gpioplus_dep = dependency('gpioplus')
+libgpiod_dep = dependency('libgpiodcxx')
 
 cpp = meson.get_compiler('cpp')
 if cpp.has_header_symbol(
@@ -48,6 +49,7 @@ deps = [
     phosphor_logging_dep,
     nlohmann_json_dep,
     gpioplus_dep,
+    libgpiod_dep,
 ]
 
 sources_buttons = [
