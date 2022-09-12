@@ -24,29 +24,9 @@ void IDButton::simPress()
     pressed();
 }
 
-void IDButton::handleEvent(sd_event_source* /* es */, int fd,
-                           uint32_t /* revents */)
+void IDButton::handleEvent(bool asserted, std::string /* gpio_name */)
 {
-    int n = -1;
-    char buf = '0';
-    n = ::lseek(fd, 0, SEEK_SET);
-
-    if (n < 0)
-    {
-        phosphor::logging::log<phosphor::logging::level::ERR>(
-            (getFormFactorType() + " : lseek error!").c_str());
-        return;
-    }
-
-    n = ::read(fd, &buf, sizeof(buf));
-    if (n < 0)
-    {
-        phosphor::logging::log<phosphor::logging::level::ERR>(
-            (getFormFactorType() + " : read error!").c_str());
-        return;
-    }
-
-    if (buf == '0')
+    if (asserted)
     {
         phosphor::logging::log<phosphor::logging::level::DEBUG>(
             (getFormFactorType() + " : pressed").c_str());

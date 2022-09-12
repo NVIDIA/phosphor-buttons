@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "button_factory.hpp"
+#include "button_handler.hpp"
 #include "button_interface.hpp"
 #include "common.hpp"
 #include "gpio.hpp"
@@ -26,7 +27,9 @@
 
 #include <unistd.h>
 
+#include <boost/asio/io_service.hpp>
 #include <phosphor-logging/elog-errors.hpp>
+#include <phosphor-logging/lg2.hpp>
 
 static constexpr std::string_view RESET_BUTTON = "RESET_BUTTON";
 
@@ -36,12 +39,12 @@ class ResetButton :
     public ButtonIface
 {
   public:
-    ResetButton(sdbusplus::bus::bus& bus, const char* path, EventPtr& event,
-                buttonConfig& buttonCfg) :
+    ResetButton(sdbusplus::bus::bus& bus, const char* path,
+                buttonConfig& buttonCfg, boost::asio::io_service& io) :
         sdbusplus::server::object::object<
             sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::Reset>(
             bus, path),
-        ButtonIface(bus, event, buttonCfg)
+        ButtonIface(bus, buttonCfg, io)
     {
         init();
     }
@@ -53,6 +56,8 @@ class ResetButton :
 
     void simPress() override;
 
+    void handleEvent(bool asserted, std::string /* gpio_name */) override;
+
     static constexpr std::string_view getFormFactorName()
     {
         return RESET_BUTTON;
@@ -62,6 +67,4 @@ class ResetButton :
     {
         return RESET_DBUS_OBJECT_NAME;
     }
-
-    void handleEvent(sd_event_source* es, int fd, uint32_t revents) override;
 };

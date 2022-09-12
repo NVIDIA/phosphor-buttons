@@ -8,7 +8,8 @@
 #include <unordered_map>
 
 using buttonIfCreatorMethod = std::function<std::unique_ptr<ButtonIface>(
-    sdbusplus::bus::bus& bus, EventPtr& event, buttonConfig& buttonCfg)>;
+    sdbusplus::bus::bus& bus, buttonConfig& buttonCfg,
+    boost::asio::io_service& io)>;
 
 /**
  * @brief This is abstract factory for the creating phosphor buttons objects
@@ -36,10 +37,10 @@ class ButtonFactory
     void addToRegistry()
     {
         buttonIfaceRegistry[std::string(T::getFormFactorName())] =
-            [](sdbusplus::bus::bus& bus, EventPtr& event,
-               buttonConfig& buttonCfg) {
-                return std::make_unique<T>(bus, T::getDbusObjectPath(), event,
-                                           buttonCfg);
+            [](sdbusplus::bus::bus& bus, buttonConfig& buttonCfg,
+               boost::asio::io_service& io) {
+                return std::make_unique<T>(bus, T::getDbusObjectPath(),
+                                           buttonCfg, io);
             };
     }
     /**
@@ -48,14 +49,14 @@ class ButtonFactory
      */
     std::unique_ptr<ButtonIface> createInstance(const std::string& name,
                                                 sdbusplus::bus::bus& bus,
-                                                EventPtr& event,
-                                                buttonConfig& buttonCfg)
+                                                buttonConfig& buttonCfg,
+                                                boost::asio::io_service& io)
     {
         // find matching name in the registry and call factory method.
         auto objectIter = buttonIfaceRegistry.find(name);
         if (objectIter != buttonIfaceRegistry.end())
         {
-            return objectIter->second(bus, event, buttonCfg);
+            return objectIter->second(bus, buttonCfg, io);
         }
         else
         {

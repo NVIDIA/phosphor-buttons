@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "button_factory.hpp"
+#include "button_handler.hpp"
 #include "button_interface.hpp"
 #include "common.hpp"
 #include "gpio.hpp"
@@ -26,6 +27,7 @@
 
 #include <unistd.h>
 
+#include <boost/asio/io_service.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 
 #include <chrono>
@@ -38,12 +40,12 @@ class PowerButton :
     public ButtonIface
 {
   public:
-    PowerButton(sdbusplus::bus::bus& bus, const char* path, EventPtr& event,
-                buttonConfig& buttonCfg) :
+    PowerButton(sdbusplus::bus::bus& bus, const char* path,
+                buttonConfig& buttonCfg, boost::asio::io_service& io) :
         sdbusplus::server::object::object<
             sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::Power>(
             bus, path),
-        ButtonIface(bus, event, buttonCfg)
+        ButtonIface(bus, buttonCfg, io)
     {
         init();
     }
@@ -66,7 +68,7 @@ class PowerButton :
     }
     void updatePressedTime();
     auto getPressTime() const;
-    void handleEvent(sd_event_source* es, int fd, uint32_t revents) override;
+    void handleEvent(bool asserted, std::string /* gpio_name */) override;
 
   protected:
     decltype(std::chrono::steady_clock::now()) pressedTime;

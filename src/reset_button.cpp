@@ -26,44 +26,20 @@ void ResetButton::simPress()
     pressed();
 }
 
-void ResetButton::handleEvent(sd_event_source* /* es */, int fd,
-                              uint32_t /* revents */)
+void ResetButton::handleEvent(bool asserted, std::string /* gpio_name */)
 {
-    int n = -1;
-    char buf = '0';
-
-    n = ::lseek(fd, 0, SEEK_SET);
-
-    if (n < 0)
-    {
-        phosphor::logging::log<phosphor::logging::level::ERR>(
-            "RESET_BUTTON: lseek error!");
-
-        return;
-    }
-
-    n = ::read(fd, &buf, sizeof(buf));
-    if (n < 0)
-    {
-        phosphor::logging::log<phosphor::logging::level::ERR>(
-            "RESET_BUTTON: read error!");
-        return;
-    }
-
-    if (buf == '0')
+    if (asserted)
     {
         phosphor::logging::log<phosphor::logging::level::DEBUG>(
-            "RESET_BUTTON: pressed");
+            (getFormFactorType() + " : pressed").c_str());
         // emit pressed signal
         pressed();
     }
     else
     {
         phosphor::logging::log<phosphor::logging::level::DEBUG>(
-            "RESET_BUTTON: released");
+            (getFormFactorType() + " : released").c_str());
         // released
         released();
     }
-
-    return;
 }

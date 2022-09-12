@@ -9,7 +9,6 @@ namespace phosphor
 {
 namespace button
 {
-
 namespace sdbusRule = sdbusplus::bus::match::rules;
 using namespace sdbusplus::xyz::openbmc_project::State::server;
 
@@ -102,7 +101,21 @@ Handler::Handler(sdbusplus::bus::bus& bus) : bus(bus)
 bool Handler::isMultiHost()
 {
     // return true in case host selector object is available
-    return (!getService(HS_DBUS_OBJECT_NAME, hostSelectorIface).empty());
+    bool ret = false;
+    try
+    {
+        ret = (!getService(HS_DBUS_OBJECT_NAME, hostSelectorIface).empty());
+    }
+    // If ResourceNotFound, return false. Rethrow other exceptions
+    catch (const sdbusplus::exception::exception& e)
+    {
+        if (std::string{e.what()}.find("ResourceNotFound") != std::string::npos)
+        {
+            return false;
+        }
+        throw;
+    }
+    return ret;
 }
 std::string Handler::getService(const std::string& path,
                                 const std::string& interface) const
