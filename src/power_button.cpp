@@ -66,7 +66,8 @@ void PowerButton::handleEvent(bool asserted, std::string /* gpio_name */)
         else
         {
             // released
-            released();
+            released(std::chrono::duration_cast<std::chrono::microseconds>(d)
+                         .count());
         }
     }
 }
