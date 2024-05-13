@@ -151,46 +151,46 @@ static void waitForGPIOEvent(gpioInfo& gpioConfig)
     gpioConfig.streamDesc.get()->async_wait(
         boost::asio::posix::stream_descriptor::wait_read,
         [&gpioConfig](const boost::system::error_code ec) {
-            if (gpioConfig.button_name == "")
-            {
-                lg2::error("Name for button is an empty string");
-                throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
-                    IOError();
-            }
-            if (ec)
-            {
-                closeAllGpio();
-                std::string errMsg = gpioConfig.button_name +
-                                     " fd handler error: " + ec.message();
-                lg2::error(errMsg.c_str());
-                // TODO: throw here to force power-control to restart?
-                throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
-                    IOError();
-            }
-            if (!gpioConfig.userdata)
-            {
-                closeAllGpio();
-                std::string errMsg = "Failed to find the " +
-                                     gpioConfig.button_name + " userdata";
-                lg2::error(errMsg.c_str());
-                throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
-                    IOError();
-            }
-            if (!gpioConfig.handler)
-            {
-                closeAllGpio();
-                std::string errMsg =
-                    "Failed to find the " + gpioConfig.button_name + " handler";
-                lg2::error(errMsg.c_str());
-                throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
-                    IOError();
-            }
-            gpiod::line_event line_event = gpioConfig.line.event_read();
-            gpioConfig.handler(gpioConfig.userdata,
-                               line_event.event_type == gpioConfig.direction,
-                               gpioConfig.gpio_name);
-            waitForGPIOEvent(gpioConfig);
-        });
+        if (gpioConfig.button_name == "")
+        {
+            lg2::error("Name for button is an empty string");
+            throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
+                IOError();
+        }
+        if (ec)
+        {
+            closeAllGpio();
+            std::string errMsg = gpioConfig.button_name +
+                                 " fd handler error: " + ec.message();
+            lg2::error(errMsg.c_str());
+            // TODO: throw here to force power-control to restart?
+            throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
+                IOError();
+        }
+        if (!gpioConfig.userdata)
+        {
+            closeAllGpio();
+            std::string errMsg = "Failed to find the " +
+                                 gpioConfig.button_name + " userdata";
+            lg2::error(errMsg.c_str());
+            throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
+                IOError();
+        }
+        if (!gpioConfig.handler)
+        {
+            closeAllGpio();
+            std::string errMsg = "Failed to find the " +
+                                 gpioConfig.button_name + " handler";
+            lg2::error(errMsg.c_str());
+            throw sdbusplus::xyz::openbmc_project::Chassis::Common::Error::
+                IOError();
+        }
+        gpiod::line_event line_event = gpioConfig.line.event_read();
+        gpioConfig.handler(gpioConfig.userdata,
+                           line_event.event_type == gpioConfig.direction,
+                           gpioConfig.gpio_name);
+        waitForGPIOEvent(gpioConfig);
+    });
 }
 
 int configGpio(gpioInfo& gpioConfig)
@@ -215,8 +215,8 @@ int configGpio(gpioInfo& gpioConfig)
     catch (const std::exception&)
     {
         closeAllGpio();
-        std::string errMsg =
-            "Failed to request events for " + gpioConfig.button_name;
+        std::string errMsg = "Failed to request events for " +
+                             gpioConfig.button_name;
         lg2::error(errMsg.c_str());
         return -1;
     }

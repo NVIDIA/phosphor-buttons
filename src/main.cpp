@@ -78,9 +78,9 @@ int main(void)
         }
         else
         {
-            gpioInfo gpioCfg =
-                gpioInfo{gpioConfig["name"], gpioConfig["gpio_name"],
-                         gpioConfig["direction"]};
+            gpioInfo gpioCfg = gpioInfo{gpioConfig["name"],
+                                        gpioConfig["gpio_name"],
+                                        gpioConfig["direction"]};
             buttonCfg.gpios.push_back(gpioCfg);
         }
 
