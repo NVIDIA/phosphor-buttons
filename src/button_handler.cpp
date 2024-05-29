@@ -161,8 +161,8 @@ size_t Handler::getHostSelectorValue()
 }
 bool Handler::poweredOn(size_t hostNumber) const
 {
-    auto chassisObjectName =
-        CHASSIS_STATE_OBJECT_NAME + std::to_string(hostNumber);
+    auto chassisObjectName = CHASSIS_STATE_OBJECT_NAME +
+                             std::to_string(hostNumber);
     auto service = getService(chassisObjectName.c_str(), chassisIface);
     auto method = bus.new_method_call(
         service.c_str(), chassisObjectName.c_str(), propertyIface, "Get");

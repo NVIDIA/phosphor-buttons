@@ -17,8 +17,7 @@ class ButtonIface
                 boost::asio::io_service& io,
                 const std::function<void(void*, bool, std::string)> handler =
                     ButtonIface::EventHandler) :
-        bus(bus),
-        config(buttonCfg), callbackHandler(handler)
+        bus(bus), config(buttonCfg), callbackHandler(handler)
     {
         int ret = -1;
 
@@ -42,8 +41,7 @@ class ButtonIface
                 IOError();
         }
     }
-    virtual ~ButtonIface()
-    {}
+    virtual ~ButtonIface() {}
 
     /**
      * @brief This method is called from sd-event provided callback function
@@ -78,8 +76,7 @@ class ButtonIface
      * default init() method can be added.
      */
 
-    virtual void init()
-    {}
+    virtual void init() {}
 
     /**
      * @brief similar to init() oem specific deinitialization can be done under

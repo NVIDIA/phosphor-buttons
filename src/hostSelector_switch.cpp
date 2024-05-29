@@ -43,8 +43,8 @@ void HostSelector::setInitialHostSelectorValue()
     for (size_t index = 0; index < gpioLineCount; index++)
     {
         auto value = config.gpios[index].line.get_value();
-        GpioState gpioState =
-            (value == 0) ? (GpioState::low) : (GpioState::high);
+        GpioState gpioState = (value == 0) ? (GpioState::low)
+                                           : (GpioState::high);
         setHostSelectorValue(config.gpios[index].gpio_name, gpioState);
         size_t hsPosMapped = getMappedHSConfig(hostSelectorPosition);
         if (hsPosMapped != INVALID_INDEX)
