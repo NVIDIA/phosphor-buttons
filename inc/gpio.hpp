@@ -37,8 +37,9 @@ struct gpioInfo
 
     gpioInfo(const std::string button_name, const std::string gpio_name,
              const std::string direction) :
-        button_name(button_name), gpio_name(gpio_name), streamDesc(nullptr),
-        userdata(nullptr), handler(nullptr)
+        button_name(button_name),
+        gpio_name(gpio_name), streamDesc(nullptr), userdata(nullptr),
+        handler(nullptr)
     {
         setDirection(direction);
     }
