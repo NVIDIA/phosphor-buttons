@@ -17,7 +17,8 @@ class ButtonIface
                 boost::asio::io_service& io,
                 const std::function<void(void*, bool, std::string)> handler =
                     ButtonIface::EventHandler) :
-        bus(bus), config(buttonCfg), callbackHandler(handler)
+        bus(bus),
+        config(buttonCfg), callbackHandler(handler)
     {
         int ret = -1;
 
