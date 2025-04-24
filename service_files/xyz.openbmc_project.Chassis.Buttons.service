@@ -1,5 +1,7 @@
 [Unit]
 Description=Phosphor Buttons
+Requires=bmc-boot-complete.service
+After=bmc-boot-complete.service
 
 [Service]
 Restart=always
