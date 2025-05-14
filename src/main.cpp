@@ -18,7 +18,7 @@
 #include "gpio.hpp"
 #include "xyz/openbmc_project/Chassis/Buttons/Reset/server.hpp"
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <gpiod.hpp>
 #include <nlohmann/json.hpp>
@@ -29,7 +29,7 @@
 static constexpr auto gpioDefFile = "/etc/default/obmc/gpio/gpio_defs.json";
 
 nlohmann::json gpioDefs;
-boost::asio::io_service io;
+boost::asio::io_context io;
 
 int main(void)
 {

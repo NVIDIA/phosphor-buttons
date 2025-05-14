@@ -27,7 +27,7 @@
 
 #include <unistd.h>
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 #include <phosphor-logging/lg2.hpp>
 
@@ -40,7 +40,7 @@ class ResetButton :
 {
   public:
     ResetButton(sdbusplus::bus::bus& bus, const char* path,
-                buttonConfig& buttonCfg, boost::asio::io_service& io) :
+                buttonConfig& buttonCfg, boost::asio::io_context& io) :
         sdbusplus::server::object::object<
             sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::Reset>(
             bus, path),
