@@ -1,7 +1,7 @@
 project(
     'phosphor-buttons', 'cpp',
     version: '1.0.0',
-    meson_version: '>=0.58.0',
+    meson_version: '>=1.1.1',
     default_options: [
         'warning_level=3',
         'werror=true',
