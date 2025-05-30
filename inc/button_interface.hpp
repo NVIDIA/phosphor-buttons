@@ -4,7 +4,7 @@
 #include "gpio.hpp"
 #include "xyz/openbmc_project/Chassis/Common/error.hpp"
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 #include <phosphor-logging/lg2.hpp>
 
@@ -14,7 +14,7 @@ class ButtonIface
 {
   public:
     ButtonIface(sdbusplus::bus::bus& bus, buttonConfig& buttonCfg,
-                boost::asio::io_service& io,
+                boost::asio::io_context& io,
                 const std::function<void(void*, bool, std::string)> handler =
                     ButtonIface::EventHandler) :
         bus(bus),
