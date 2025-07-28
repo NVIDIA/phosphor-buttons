@@ -9,7 +9,7 @@
 
 using buttonIfCreatorMethod = std::function<std::unique_ptr<ButtonIface>(
     sdbusplus::bus::bus& bus, buttonConfig& buttonCfg,
-    boost::asio::io_service& io)>;
+    boost::asio::io_context& io)>;
 
 /**
  * @brief This is abstract factory for the creating phosphor buttons objects
@@ -38,7 +38,7 @@ class ButtonFactory
     {
         buttonIfaceRegistry[std::string(T::getFormFactorName())] =
             [](sdbusplus::bus::bus& bus, buttonConfig& buttonCfg,
-               boost::asio::io_service& io) {
+               boost::asio::io_context& io) {
             return std::make_unique<T>(bus, T::getDbusObjectPath(), buttonCfg,
                                        io);
         };
@@ -50,7 +50,7 @@ class ButtonFactory
     std::unique_ptr<ButtonIface> createInstance(const std::string& name,
                                                 sdbusplus::bus::bus& bus,
                                                 buttonConfig& buttonCfg,
-                                                boost::asio::io_service& io)
+                                                boost::asio::io_context& io)
     {
         // find matching name in the registry and call factory method.
         auto objectIter = buttonIfaceRegistry.find(name);

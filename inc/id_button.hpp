@@ -26,7 +26,7 @@
 
 #include <unistd.h>
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 
 static constexpr std::string_view ID_BUTTON = "ID_BTN";
@@ -38,7 +38,7 @@ class IDButton :
 {
   public:
     IDButton(sdbusplus::bus::bus& bus, const char* path,
-             buttonConfig& buttonCfg, boost::asio::io_service& io) :
+             buttonConfig& buttonCfg, boost::asio::io_context& io) :
         sdbusplus::server::object::object<
             sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::ID>(
             bus, path),

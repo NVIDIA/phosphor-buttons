@@ -15,7 +15,7 @@
 */
 #pragma once
 
-#include <boost/asio/io_service.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <gpiod.hpp>
 #include <nlohmann/json.hpp>

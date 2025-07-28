@@ -34,7 +34,7 @@ class HostSelector final :
 {
   public:
     HostSelector(sdbusplus::bus::bus& bus, const char* path,
-                 buttonConfig& buttonCfg, boost::asio::io_service& io) :
+                 buttonConfig& buttonCfg, boost::asio::io_context& io) :
         sdbusplus::server::object_t<sdbusplus::xyz::openbmc_project::Chassis::
                                         Buttons::server::HostSelector>(
             bus, path, action::defer_emit),
