@@ -152,6 +152,13 @@ enabled using the following optional fields in the JSON configuration:
 - **polling_interval_ms** (optional): Polling interval in milliseconds. Defaults
   to `1000` ms if not specified.
 
+**Optional: Virtual Button Configuration** Some platforms implement HostSelector
+objects without actual power button control functionality. To prevent
+interference with multi-power button mode detection:
+
+- **virtual_button** : Set to `true` when not used as power button, e.g., OCP
+  debug card. Defaults to false if not specified.
+
 ### Config Example
 
 #### A.Interrupt example

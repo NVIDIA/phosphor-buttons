@@ -157,11 +157,6 @@ class Handler
     sdbusplus::bus_t& bus;
 
     /**
-     * @brief Matches on the power button released signal
-     */
-    std::unique_ptr<sdbusplus::bus::match_t> powerButtonReleased;
-
-    /**
      * @brief Matches on the power button long press released signal
      */
     std::unique_ptr<sdbusplus::bus::match_t> powerButtonLongPressed;
@@ -199,9 +194,9 @@ class Handler
     bool hostSelectButtonMode = false;
 
     /**
-     * @brief Flag to indicate if the button supports multi action
+     * @brief Flag to indicate if the button is a virtual button
      */
-    bool isButtonMultiActionSupport = true;
+    bool virtualButton = false;
 };
 
 } // namespace button

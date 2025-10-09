@@ -21,6 +21,7 @@ namespace button
 namespace sdbusRule = sdbusplus::bus::match::rules;
 using namespace sdbusplus::xyz::openbmc_project::State::server;
 using namespace sdbusplus::xyz::openbmc_project::Chassis::Buttons::server;
+using GetSubTreePathsType = std::vector<std::string>;
 
 const std::map<std::string, Chassis::Transition> chassisPwrCtls = {
     {"chassis-on", Chassis::Transition::On},
@@ -58,17 +59,13 @@ Handler::Handler(sdbusplus::bus_t& bus) : bus(bus)
     - multi power button mode, e.g.: Greatlakes
     each slot/sled has its own power button,
     in the case, hostSelectButtonMode = false */
-    hostSelectButtonMode =
-        !getService(HS_DBUS_OBJECT_NAME, hostSelectorIface).empty();
-    size_t powerButtonCount = 1;
-    if (!hostSelectButtonMode)
-    {
-        powerButtonCount = phosphor::button::numberOfChassis();
-    }
 
     std::ifstream gpios{gpioDefFile};
     auto configDefJson = nlohmann::json::parse(gpios, nullptr, true);
     nlohmann::json gpioDefs = configDefJson["gpio_definitions"];
+
+    bool isHostSelectorExists =
+        !getService(HS_DBUS_OBJECT_NAME, hostSelectorIface).empty();
 
     for (const auto& gpioConfig : gpioDefs)
     {
@@ -91,16 +88,29 @@ Handler::Handler(sdbusplus::bus_t& bus) : bus(bus)
             }
             multiPwrBtnActConf.emplace_back(mapEntry);
         }
-        else
+
+        if (gpioConfig.value("name", "") == "HOST_SELECTOR")
         {
-            isButtonMultiActionSupport = false;
-            break;
+            virtualButton = gpioConfig.value("virtual_button", false);
+            lg2::debug("Change virtualButton flag to: {VIRTUAL}", "VIRTUAL",
+                       virtualButton);
         }
     }
 
+    hostSelectButtonMode = isHostSelectorExists && !virtualButton;
+    lg2::debug("hostSelectButtonMode: {MODE}", "MODE", hostSelectButtonMode);
+
     try
     {
-        if (!getService(POWER_DBUS_OBJECT_NAME, powerButtonIface).empty())
+        static const int depth = 1;
+        GetSubTreePathsType powerButtonSubTreePaths;
+        auto method = bus.new_method_call(mapperService, mapperObjPath,
+                                          mapperIface, "GetSubTreePaths");
+        method.append("/xyz/openbmc_project/Chassis/Buttons", depth,
+                      GetSubTreePathsType({powerButtonIface}));
+        auto reply = bus.call(method);
+        reply.read(powerButtonSubTreePaths);
+        if (!powerButtonSubTreePaths.empty())
         {
             lg2::info("Starting power button handler");
 
@@ -108,45 +118,33 @@ Handler::Handler(sdbusplus::bus_t& bus) : bus(bus)
             powerButtonProfile =
                 PowerButtonProfileFactory::instance().createProfile(bus);
 
+            // Fallback: register for all power buttons found
             if (!powerButtonProfile)
             {
-                powerButtonReleased = std::make_unique<sdbusplus::bus::match_t>(
-                    bus,
-                    sdbusRule::type::signal() + sdbusRule::member("Released") +
-                        sdbusRule::path(POWER_DBUS_OBJECT_NAME) +
-                        sdbusRule::interface(powerButtonIface),
-                    std::bind(std::mem_fn(&Handler::powerReleased), this,
-                              std::placeholders::_1));
-            }
-        }
-
-        if (!hostSelectButtonMode && isButtonMultiActionSupport)
-        {
-            lg2::info("Starting multi power button handler");
-            // The index, 'countIter', starts at 1 and increments,
-            // representing slot_1 through slot_N.
-            for (size_t countIter = 1; countIter <= powerButtonCount;
-                 countIter++)
-            {
-                std::unique_ptr<sdbusplus::bus::match_t>
-                    multiPowerReleaseMatch =
-                        std::make_unique<sdbusplus::bus::match_t>(
-                            bus,
-                            sdbusRule::type::signal() +
-                                sdbusRule::member("Released") +
-                                sdbusRule::path(POWER_DBUS_OBJECT_NAME +
-                                                std::to_string(countIter)) +
-                                sdbusRule::interface(powerButtonIface),
-                            std::bind(std::mem_fn(&Handler::powerReleased),
-                                      this, std::placeholders::_1));
-                multiPowerButtonReleased.emplace_back(
-                    std::move(multiPowerReleaseMatch));
+                for (const auto& path : powerButtonSubTreePaths)
+                {
+                    lg2::debug("Registering power button handler for: {PATH}",
+                               "PATH", path);
+                    std::unique_ptr<sdbusplus::bus::match_t>
+                        multiPowerReleaseMatch =
+                            std::make_unique<sdbusplus::bus::match_t>(
+                                bus,
+                                sdbusRule::type::signal() +
+                                    sdbusRule::member("Released") +
+                                    sdbusRule::path(path) +
+                                    sdbusRule::interface(powerButtonIface),
+                                std::bind(std::mem_fn(&Handler::powerReleased),
+                                          this, std::placeholders::_1));
+                    multiPowerButtonReleased.emplace_back(
+                        std::move(multiPowerReleaseMatch));
+                }
             }
         }
     }
     catch (const sdbusplus::exception_t& e)
     {
-        lg2::error("Error creating power button handler: {ERROR}", "ERROR", e);
+        lg2::error("Error creating power button handlers: '{ERROR_MESSAGE}'",
+                   "ERROR_MESSAGE", e.what());
     }
 
     try
