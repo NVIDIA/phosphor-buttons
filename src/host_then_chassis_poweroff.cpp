@@ -193,8 +193,7 @@ bool HostThenChassisPowerOff::isPoweredOn() const
         method.append(interface::chassisState, "CurrentPowerState");
         auto result = bus.call(method);
 
-        std::variant<std::string> state;
-        result.read(state);
+        auto state = result.unpack<std::variant<std::string>>();
 
         chassisState =
             Chassis::convertPowerStateFromString(std::get<std::string>(state));
@@ -220,8 +219,7 @@ bool HostThenChassisPowerOff::isBmcReady() const
         method.append(interface::bmcState, "CurrentBMCState");
         auto result = bus.call(method);
 
-        std::variant<std::string> state;
-        result.read(state);
+        auto state = result.unpack<std::variant<std::string>>();
 
         bmcState = BMC::convertBMCStateFromString(std::get<std::string>(state));
     }

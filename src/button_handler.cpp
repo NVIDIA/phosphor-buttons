@@ -226,8 +226,9 @@ std::string Handler::getService(const std::string& path,
     try
     {
         auto result = bus.call(method);
-        std::map<std::string, std::vector<std::string>> objectData;
-        result.read(objectData);
+        auto objectData =
+            result.unpack<std::map<std::string, std::vector<std::string>>>();
+
         return objectData.begin()->first;
     }
     catch (const sdbusplus::exception_t& e)
@@ -252,8 +253,7 @@ size_t Handler::getHostSelectorValue()
         method.append(hostSelectorIface, "Position");
         auto result = bus.call(method);
 
-        std::variant<size_t> HSPositionVariant;
-        result.read(HSPositionVariant);
+        auto HSPositionVariant = result.unpack<std::variant<size_t>>();
 
         auto position = std::get<size_t>(HSPositionVariant);
         return position;
@@ -273,8 +273,7 @@ bool Handler::poweredOn(size_t hostNumber) const
     method.append(hostIface, "CurrentHostState");
     auto result = bus.call(method);
 
-    std::variant<std::string> state;
-    result.read(state);
+    auto state = result.unpack<std::variant<std::string>>();
 
     return Host::HostState::Off !=
            Host::convertHostStateFromString(std::get<std::string>(state));
@@ -415,8 +414,7 @@ void Handler::powerReleased(sdbusplus::message_t& msg)
 {
     try
     {
-        uint64_t time;
-        msg.read(time);
+        auto time = msg.unpack<uint64_t>();
 
         handlePowerEvent(PowerEvent::powerReleased, msg.get_path(),
                          std::chrono::microseconds(time));
@@ -464,8 +462,7 @@ void Handler::idReleased(sdbusplus::message_t& /* msg */)
         method.append(ledGroupIface, "Asserted");
         auto result = bus.call(method);
 
-        std::variant<bool> state;
-        result.read(state);
+        auto state = result.unpack<std::variant<bool>>();
 
         state = !std::get<bool>(state);
 
@@ -503,8 +500,8 @@ void Handler::increaseHostSelectorPosition()
                                 phosphor::button::propertyIface, "GetAll");
         method.append(phosphor::button::hostSelectorIface);
         auto result = bus.call(method);
-        std::unordered_map<std::string, std::variant<size_t>> properties;
-        result.read(properties);
+        auto properties = result.unpack<
+            std::unordered_map<std::string, std::variant<size_t>>>();
 
         auto maxPosition = std::get<size_t>(properties.at("MaxPosition"));
         auto position = std::get<size_t>(properties.at("Position"));
