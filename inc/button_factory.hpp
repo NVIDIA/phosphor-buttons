@@ -48,12 +48,24 @@ class ButtonFactory
     void addToRegistry(size_t index)
     {
         auto indexStr = std::to_string(index);
+
+        /**
+         * @brief getDbusObjectPath() returns ".../Power0" / ".../Reset0" /
+         * ".../ID0" Strip the trailing placeholder '0' so multi-instance paths
+         * become
+         * ".../Power1", ".../Power2", etc.
+         */
+        std::string objectPath = T::getDbusObjectPath();
+        if (objectPath.ends_with("0"))
+        {
+            objectPath.pop_back();
+        }
+
         buttonIfaceRegistry[T::getFormFactorName() + indexStr] =
             [=](sdbusplus::bus_t& bus, EventPtr& event,
                 ButtonConfig& buttonCfg) {
-                return std::make_unique<T>(
-                    bus, (T::getDbusObjectPath() + indexStr).c_str(), event,
-                    buttonCfg);
+                return std::make_unique<T>(bus, (objectPath + indexStr).c_str(),
+                                           event, buttonCfg);
             };
     }
 

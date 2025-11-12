@@ -125,6 +125,25 @@ class Handler
      */
 
     size_t getHostSelectorValue();
+
+    /**
+     * @brief Get host number string from the D-Bus object path based on event
+     * type
+     *
+     * @param powerEventType - The type of power event
+     * (powerReleased/resetReleased)
+     *
+     * @param objectPath - The DBus object path from which to extract host
+     * number
+     *
+     * @return std::string - Host number as a string
+     *
+     * @throws std::runtime_error if the event type is invalid or parsing fails
+     */
+
+    std::string getHostNumStr(PowerEvent powerEventType,
+                              const std::string& objectPath) const;
+
     /**
      * @brief increases the host selector position property
      * by 1 upto max host selector position
