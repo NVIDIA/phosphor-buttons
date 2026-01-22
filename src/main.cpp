@@ -107,6 +107,12 @@ int main(void)
                     // When "pin" key is used, parse as alphanumeric
                     gpioCfg.number = getGpioNum(config.at("pin"));
                 }
+                else if (config.contains("line_name"))
+                {
+                    // When "line_name" key is used, parse as string
+                    gpioCfg.number =
+                        getGlobalGpioNumberFromName(config.at("line_name"));
+                }
                 else
                 {
                     // Without "pin", "num" is assumed and parsed as an integer
@@ -127,6 +133,12 @@ int main(void)
             {
                 // When "pin" key is used, parse as alphanumeric
                 gpioCfg.number = getGpioNum(gpioConfig.at("pin"));
+            }
+            else if (gpioConfig.contains("line_name"))
+            {
+                // When "line_name" key is used, parse as string
+                gpioCfg.number =
+                    getGlobalGpioNumberFromName(gpioConfig.at("line_name"));
             }
             else
             {

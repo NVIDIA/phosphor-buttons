@@ -70,6 +70,8 @@ int configGroupGpio(ButtonConfig& buttonCfg);
 int configGpio(GpioInfo& gpioConfig, ButtonConfig& buttonIFConfig);
 
 uint32_t getGpioNum(const std::string& gpioPin);
+
+uint32_t getGlobalGpioNumberFromName(const std::string& lineName);
 // Set gpio state based on polarity
 void setGpioState(int fd, GpioPolarity polarity, GpioState state);
 // Get gpio state based on polarity
