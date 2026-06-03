@@ -18,3 +18,48 @@ option(
     value: 'enabled',
     description : 'Look up the GPIO base value in /sys/class/gpio. Otherwise use a base of 0.'
 )
+
+# NVIDIA UID button function: a long press of the ID (UID) button triggers a
+# password reset or factory reset, handled by the existing button-handler.
+# Disabled by default; enabled per-platform via the recipe.
+option(
+    'uid-button-function',
+    type : 'feature',
+    value: 'disabled',
+    description : 'Enable UID button password/factory reset in button-handler'
+)
+
+option(
+    'uid-password-reset-time',
+    type : 'integer',
+    value: 30000,
+    description : 'ID button press milliseconds that trigger a password reset'
+)
+
+option(
+    'uid-factory-reset-time',
+    type : 'integer',
+    value: 60000,
+    description : 'ID button press milliseconds that trigger a factory reset'
+)
+
+option(
+    'username',
+    type : 'string',
+    value: 'root',
+    description : 'Username for the UID button password reset'
+)
+
+option(
+    'password',
+    type : 'string',
+    value: '',
+    description : 'Password for the UID button password reset. Must be set per-platform when uid-button-function is enabled.'
+)
+
+option(
+    'expire-password',
+    type : 'boolean',
+    value: false,
+    description : 'Force password expiration after the UID button reset'
+)
