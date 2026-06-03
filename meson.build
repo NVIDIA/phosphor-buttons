@@ -38,6 +38,33 @@ conf_data.set_quoted('ID_LED_GROUP', get_option('id-led-group'))
 conf_data.set('LONG_PRESS_TIME_MS', get_option('long-press-time-ms'))
 conf_data.set('LOOKUP_GPIO_BASE', get_option('lookup-gpio-base').enabled())
 
+uid_button = get_option('uid-button-function')
+conf_data.set10('UID_BUTTON_FUNCTION', uid_button.allowed())
+uid_password_reset_time = get_option('uid-password-reset-time')
+uid_factory_reset_time = get_option('uid-factory-reset-time')
+if uid_button.allowed()
+    if uid_password_reset_time <= 0 or uid_factory_reset_time <= 0
+        error('UID reset thresholds must be > 0 ms')
+    endif
+    if uid_password_reset_time >= uid_factory_reset_time
+        error('uid-password-reset-time must be less than uid-factory-reset-time')
+    endif
+    if get_option('username') == ''
+        error('username must be set when uid-button-function is enabled')
+    endif
+    if get_option('password') == ''
+        error('password must be set when uid-button-function is enabled')
+    endif
+    # Write the credentials into the generated config.h header rather than
+    # passing them via -D on the compiler command line. This keeps the
+    # plaintext out of compile command lines, compile_commands.json, and
+    # build logs.
+    conf_data.set_quoted('USERNAME', get_option('username'))
+    conf_data.set_quoted('PASSWORD', get_option('password'))
+endif
+conf_data.set('UID_PASSWORD_RESET_TIME_MSEC', uid_password_reset_time)
+conf_data.set('UID_FACTORY_RESET_TIME_MSEC', uid_factory_reset_time)
+
 configure_file(output: 'config.h', configuration: conf_data)
 
 sdbusplus_dep = dependency('sdbusplus')
@@ -77,6 +104,18 @@ sources_buttons = [
 
 sources_handler = ['src/button_handler_main.cpp', 'src/button_handler.cpp']
 
+# The UID button password/factory reset runs inside button-handler, so only
+# that executable needs PAM. The credentials come from config.h (set above),
+# not from the compiler command line.
+handler_deps = deps
+handler_cpp_args = []
+if uid_button.allowed()
+    handler_deps += dependency('pam', required: true)
+    if get_option('expire-password')
+        handler_cpp_args += '-DEXPIRE_PASSWORD'
+    endif
+endif
+
 executable(
     'buttons',
     sources_buttons,
@@ -90,9 +129,10 @@ executable(
 executable(
     'button-handler',
     sources_handler,
+    cpp_args: handler_cpp_args,
     implicit_include_directories: true,
     include_directories: ['inc'],
-    dependencies: deps,
+    dependencies: handler_deps,
     install: true,
     install_dir: get_option('bindir'),
 )
@@ -116,3 +156,11 @@ configure_file(
     copy: true,
     install_dir: systemd_system_unit_dir,
 )
+
+# PAM stack used by the UID button password reset.
+if uid_button.allowed()
+    install_data(
+        'service_files/passwordreset',
+        install_dir: get_option('sysconfdir') / 'pam.d',
+    )
+endif

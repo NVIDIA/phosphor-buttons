@@ -5,6 +5,14 @@
 #include <phosphor-logging/lg2.hpp>
 #include <xyz/openbmc_project/State/Chassis/server.hpp>
 #include <xyz/openbmc_project/State/Host/server.hpp>
+
+#if UID_BUTTON_FUNCTION
+#include <security/pam_appl.h>
+
+#include <cstdlib>
+#include <cstring>
+#include <span>
+#endif
 namespace phosphor
 {
 namespace button
@@ -72,6 +80,16 @@ Handler::Handler(sdbusplus::bus::bus& bus) : bus(bus)
                     sdbusRule::interface(idButtonIface),
                 std::bind(std::mem_fn(&Handler::idReleased), this,
                           std::placeholders::_1));
+
+#if UID_BUTTON_FUNCTION
+            idButtonLongPressed = std::make_unique<sdbusplus::bus::match_t>(
+                bus,
+                sdbusRule::type::signal() + sdbusRule::member("PressedLong") +
+                    sdbusRule::path(ID_DBUS_OBJECT_NAME) +
+                    sdbusRule::interface(idButtonIface),
+                std::bind(std::mem_fn(&Handler::idPressedLong), this,
+                          std::placeholders::_1));
+#endif
         }
     }
     catch (const sdbusplus::exception::exception& e)
@@ -364,5 +382,207 @@ void Handler::idReleased(sdbusplus::message::message& /* msg */)
                    "ERROR", e);
     }
 }
+
+#if UID_BUTTON_FUNCTION
+namespace
+{
+
+void eventLog(sdbusplus::bus::bus& bus, const std::string& message,
+              const std::string& severity)
+{
+    try
+    {
+        auto method = bus.new_method_call(
+            "xyz.openbmc_project.Logging", "/xyz/openbmc_project/logging",
+            "xyz.openbmc_project.Logging.Create", "Create");
+        std::map<std::string, std::string> additionalData;
+        method.append(message, severity, additionalData);
+        bus.call(method);
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Failed to generate event log: {ERROR}", "ERROR", e.what());
+    }
+}
+
+void factoryReset(sdbusplus::bus::bus& bus)
+{
+    int val = std::system("fw_setenv openbmconce factory-reset");
+    if (val == 0)
+    {
+        lg2::info("Factory Reset successfully using UID button press");
+        eventLog(bus, "Factory Reset successfully using UID button press",
+                 "xyz.openbmc_project.Logging.Entry.Level.Informational");
+        auto ret = std::system("reboot");
+        if (ret != 0)
+        {
+            lg2::error("Reboot failed after factory reset was armed");
+            eventLog(bus, "Reboot failed after factory reset was armed",
+                     "xyz.openbmc_project.Logging.Entry.Level.Error");
+        }
+    }
+    else
+    {
+        lg2::error("Error during Factory Reset");
+        eventLog(bus, "Error during Factory Reset",
+                 "xyz.openbmc_project.Logging.Entry.Level.Error");
+    }
+}
+
+// PAM conversation function used to feed the new password to the PAM stack.
+int pamFunctionConversation(int numMsg, const struct pam_message** msg,
+                            struct pam_response** resp, void* appdataPtr)
+{
+    if ((appdataPtr == nullptr) || (msg == nullptr) || (resp == nullptr))
+    {
+        return PAM_CONV_ERR;
+    }
+
+    if (numMsg <= 0 || numMsg >= PAM_MAX_NUM_MSG)
+    {
+        return PAM_CONV_ERR;
+    }
+
+    auto msgCount = static_cast<size_t>(numMsg);
+    auto messages = std::span(msg, msgCount);
+
+    for (size_t i = 0; i < msgCount; ++i)
+    {
+        /* Ignore all PAM messages except prompting for hidden input */
+        if (messages[i]->msg_style != PAM_PROMPT_ECHO_OFF)
+        {
+            continue;
+        }
+
+        /* Assume PAM is only prompting for the password as hidden input */
+        /* Allocate memory only when PAM_PROMPT_ECHO_OFF is encountered */
+
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        char* appPass = reinterpret_cast<char*>(appdataPtr);
+        // Buffer size including the trailing NUL terminator.
+        size_t appPassSize = std::strlen(appPass) + 1;
+
+        if (appPassSize > PAM_MAX_RESP_SIZE)
+        {
+            return PAM_CONV_ERR;
+        }
+        // Ideally we'd like to avoid using malloc here, but because we're
+        // passing off ownership of this to a C application, there aren't a lot
+        // of sane ways to avoid it.
+
+        // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
+        void* passPtr = malloc(appPassSize);
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        char* pass = reinterpret_cast<char*>(passPtr);
+        if (pass == nullptr)
+        {
+            return PAM_BUF_ERR;
+        }
+
+        std::strncpy(pass, appPass, appPassSize);
+
+        // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
+        void* ptr = calloc(msgCount, sizeof(struct pam_response));
+        if (ptr == nullptr)
+        {
+            // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
+            free(pass);
+            return PAM_BUF_ERR;
+        }
+
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        *resp = reinterpret_cast<pam_response*>(ptr);
+
+        // Create the span only after *resp points at the freshly allocated
+        // array, otherwise it would reference unallocated memory.
+        auto responses = std::span(*resp, msgCount);
+        responses[i].resp = pass;
+
+        return PAM_SUCCESS;
+    }
+
+    return PAM_CONV_ERR;
+}
+
+int pamUpdatePassword(const std::string& username, const std::string& password)
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+    char* passStrNoConst = const_cast<char*>(password.c_str());
+    const struct pam_conv localConversation = {pamFunctionConversation,
+                                               passStrNoConst};
+    pam_handle_t* localAuthHandle = nullptr; // this gets set by pam_start
+
+    int retval = pam_start("passwordreset", username.c_str(),
+                           &localConversation, &localAuthHandle);
+    if (retval != PAM_SUCCESS)
+    {
+        return retval;
+    }
+
+    retval = pam_chauthtok(localAuthHandle, PAM_SILENT);
+    if (retval != PAM_SUCCESS)
+    {
+        pam_end(localAuthHandle, retval);
+        return retval;
+    }
+
+    return pam_end(localAuthHandle, PAM_SUCCESS);
+}
+
+void passwordReset(sdbusplus::bus::bus& bus)
+{
+    auto ret = pamUpdatePassword(USERNAME, PASSWORD);
+    if (ret == PAM_SUCCESS)
+    {
+#ifdef EXPIRE_PASSWORD
+        // Enforce password expiration for the user.
+        std::string cmd = "passwd --expire " + std::string(USERNAME);
+        auto expireRet = std::system(cmd.c_str());
+        if (expireRet != 0)
+        {
+            lg2::error("Failed to expire password after reset.");
+        }
+#endif // EXPIRE_PASSWORD
+        lg2::info("Password reset successfully using UID button press");
+        eventLog(bus, "Password reset successfully using UID button press",
+                 "xyz.openbmc_project.Logging.Entry.Level.Informational");
+    }
+    else
+    {
+        lg2::error("Failed to reset password: {RET}", "RET", ret);
+        eventLog(bus, "Failed to reset password using UID button press",
+                 "xyz.openbmc_project.Logging.Entry.Level.Error");
+    }
+}
+
+} // namespace
+
+void Handler::idPressedLong(sdbusplus::message::message& msg)
+{
+    try
+    {
+        uint64_t milliseconds = 0;
+        msg.read(milliseconds);
+
+        if (milliseconds >= static_cast<uint64_t>(UID_FACTORY_RESET_TIME_MSEC))
+        {
+            lg2::info("UID button held {MSEC}ms: performing factory reset",
+                      "MSEC", milliseconds);
+            factoryReset(bus);
+        }
+        else
+        {
+            lg2::info("UID button held {MSEC}ms: performing password reset",
+                      "MSEC", milliseconds);
+            passwordReset(bus);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        lg2::error("Exception handling UID button long press: {ERROR}", "ERROR",
+                   e.what());
+    }
+}
+#endif // UID_BUTTON_FUNCTION
 } // namespace button
 } // namespace phosphor
