@@ -29,6 +29,8 @@
 #include <boost/asio/io_context.hpp>
 #include <phosphor-logging/elog-errors.hpp>
 
+#include <chrono>
+
 static constexpr std::string_view ID_BUTTON = "ID_BTN";
 
 class IDButton :
@@ -64,4 +66,12 @@ class IDButton :
     {
         return ID_DBUS_OBJECT_NAME;
     }
+
+#if UID_BUTTON_FUNCTION
+    void updatePressedTime();
+    auto getPressTime() const;
+
+  protected:
+    std::chrono::steady_clock::time_point pressedTime{};
+#endif
 };

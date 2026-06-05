@@ -1,4 +1,6 @@
 #pragma once
+#include "config.h"
+
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/bus/match.hpp>
 
@@ -73,6 +75,18 @@ class Handler
      */
     void idReleased(sdbusplus::message::message& msg);
 
+#if UID_BUTTON_FUNCTION
+    /**
+     * @brief The handler for an ID (UID) button long press
+     *
+     * Performs a password reset or, for a longer press, a factory reset,
+     * based on the press duration carried by the signal.
+     *
+     * @param[in] msg - sdbusplus message from signal
+     */
+    void idPressedLong(sdbusplus::message::message& msg);
+#endif
+
     /**
      * @brief The handler for a reset button press
      *
@@ -141,6 +155,13 @@ class Handler
      * @brief Matches on the ID button released signal
      */
     std::unique_ptr<sdbusplus::bus::match_t> idButtonReleased;
+
+#if UID_BUTTON_FUNCTION
+    /**
+     * @brief Matches on the ID button long press signal
+     */
+    std::unique_ptr<sdbusplus::bus::match_t> idButtonLongPressed;
+#endif
 
     /**
      * @brief Matches on the reset button released signal
