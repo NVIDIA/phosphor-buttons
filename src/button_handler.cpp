@@ -18,7 +18,7 @@ namespace phosphor
 namespace button
 {
 
-namespace sdbusRule = sdbusplus::bus::match::rules;
+namespace sdbusRule = sdbusplus::match_rules;
 using namespace sdbusplus::xyz::openbmc_project::State::server;
 using namespace sdbusplus::xyz::openbmc_project::Chassis::Buttons::server;
 using GetSubTreePathsType = std::vector<std::string>;
@@ -125,16 +125,15 @@ Handler::Handler(sdbusplus::bus_t& bus) : bus(bus)
                 {
                     lg2::debug("Registering power button handler for: {PATH}",
                                "PATH", path);
-                    std::unique_ptr<sdbusplus::bus::match_t>
-                        multiPowerReleaseMatch =
-                            std::make_unique<sdbusplus::bus::match_t>(
-                                bus,
-                                sdbusRule::type::signal() +
-                                    sdbusRule::member("Released") +
-                                    sdbusRule::path(path) +
-                                    sdbusRule::interface(powerButtonIface),
-                                std::bind(std::mem_fn(&Handler::powerReleased),
-                                          this, std::placeholders::_1));
+                    std::unique_ptr<sdbusplus::match> multiPowerReleaseMatch =
+                        std::make_unique<sdbusplus::match>(
+                            bus,
+                            sdbusRule::type::signal() +
+                                sdbusRule::member("Released") +
+                                sdbusRule::path(path) +
+                                sdbusRule::interface(powerButtonIface),
+                            std::bind(std::mem_fn(&Handler::powerReleased),
+                                      this, std::placeholders::_1));
                     multiPowerButtonReleased.emplace_back(
                         std::move(multiPowerReleaseMatch));
                 }
@@ -152,7 +151,7 @@ Handler::Handler(sdbusplus::bus_t& bus) : bus(bus)
         if (!getService(ID_DBUS_OBJECT_NAME, idButtonIface).empty())
         {
             lg2::info("Registering ID button handler");
-            idButtonReleased = std::make_unique<sdbusplus::bus::match_t>(
+            idButtonReleased = std::make_unique<sdbusplus::match>(
                 bus,
                 sdbusRule::type::signal() + sdbusRule::member("Released") +
                     sdbusRule::path(ID_DBUS_OBJECT_NAME) +
@@ -171,7 +170,7 @@ Handler::Handler(sdbusplus::bus_t& bus) : bus(bus)
         if (!getService(RESET_DBUS_OBJECT_NAME, resetButtonIface).empty())
         {
             lg2::info("Registering reset button handler");
-            resetButtonReleased = std::make_unique<sdbusplus::bus::match_t>(
+            resetButtonReleased = std::make_unique<sdbusplus::match>(
                 bus,
                 sdbusRule::type::signal() + sdbusRule::member("Released") +
                     sdbusRule::path(RESET_DBUS_OBJECT_NAME) +
@@ -190,7 +189,7 @@ Handler::Handler(sdbusplus::bus_t& bus) : bus(bus)
                  .empty())
         {
             lg2::info("Registering debug host selector button handler");
-            debugHSButtonReleased = std::make_unique<sdbusplus::bus::match_t>(
+            debugHSButtonReleased = std::make_unique<sdbusplus::match>(
                 bus,
                 sdbusRule::type::signal() + sdbusRule::member("Released") +
                     sdbusRule::path(DBG_HS_DBUS_OBJECT_NAME) +

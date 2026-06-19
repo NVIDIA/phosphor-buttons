@@ -178,28 +178,27 @@ class Handler
     /**
      * @brief Matches on the power button long press released signal
      */
-    std::unique_ptr<sdbusplus::bus::match_t> powerButtonLongPressed;
+    std::unique_ptr<sdbusplus::match> powerButtonLongPressed;
 
     /**
      * @brief Matches on the multi power button released signal
      */
-    std::vector<std::unique_ptr<sdbusplus::bus::match_t>>
-        multiPowerButtonReleased;
+    std::vector<std::unique_ptr<sdbusplus::match>> multiPowerButtonReleased;
 
     /**
      * @brief Matches on the ID button released signal
      */
-    std::unique_ptr<sdbusplus::bus::match_t> idButtonReleased;
+    std::unique_ptr<sdbusplus::match> idButtonReleased;
 
     /**
      * @brief Matches on the reset button released signal
      */
-    std::unique_ptr<sdbusplus::bus::match_t> resetButtonReleased;
+    std::unique_ptr<sdbusplus::match> resetButtonReleased;
 
     /**
      * @brief Matches on the ocp debug host selector  button released signal
      */
-    std::unique_ptr<sdbusplus::bus::match_t> debugHSButtonReleased;
+    std::unique_ptr<sdbusplus::match> debugHSButtonReleased;
 
     /**
      * @brief The custom power handler profile object.

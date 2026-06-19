@@ -74,7 +74,7 @@ class SerialUartMux final : public ButtonIface
 
   protected:
     size_t gpioLineCount;
-    std::unique_ptr<sdbusplus::bus::match_t> hostPositionChanged;
+    std::unique_ptr<sdbusplus::match> hostPositionChanged;
     GpioInfo debugCardPresentGpio;
     std::unordered_map<size_t, size_t> serialUartMuxMap;
 };

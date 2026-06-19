@@ -13,7 +13,7 @@ namespace phosphor::button
 
 constexpr auto powerButtonInterface =
     "xyz.openbmc_project.Chassis.Buttons.Power";
-namespace sdbusRule = sdbusplus::bus::match::rules;
+namespace sdbusRule = sdbusplus::match_rules;
 
 /**
  * @class PowerButtonProfile
@@ -65,8 +65,8 @@ class PowerButtonProfile
     sdbusplus::bus_t& bus;
 
   private:
-    sdbusplus::bus::match_t pressedMatch;
-    sdbusplus::bus::match_t releasedMatch;
+    sdbusplus::match pressedMatch;
+    sdbusplus::match releasedMatch;
 };
 
 } // namespace phosphor::button

@@ -5,7 +5,7 @@
 #include <error.h>
 
 #include <phosphor-logging/lg2.hpp>
-namespace sdbusRule = sdbusplus::bus::match::rules;
+namespace sdbusRule = sdbusplus::match_rules;
 // add the button iface class to registry
 static ButtonIFRegister<SerialUartMux> buttonRegister;
 using HostSelectorServerObj =
@@ -23,7 +23,7 @@ void SerialUartMux::init()
         std::string matchPattern = sdbusRule::propertiesChanged(
             HS_DBUS_OBJECT_NAME, HostSelectorClientObj::interface);
 
-        hostPositionChanged = std::make_unique<sdbusplus::bus::match_t>(
+        hostPositionChanged = std::make_unique<sdbusplus::match>(
             bus, matchPattern,
             std::bind(std::mem_fn(&SerialUartMux::hostSelectorPositionChanged),
                       this, std::placeholders::_1));
