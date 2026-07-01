@@ -25,6 +25,8 @@
 #include <phosphor-logging/elog-errors.hpp>
 #include <sdbusplus/asio/object_server.hpp>
 
+#include <cstdlib>
+#include <exception>
 #include <fstream>
 static constexpr auto gpioDefFile = "/etc/default/obmc/gpio/gpio_defs.json";
 
@@ -32,6 +34,7 @@ nlohmann::json gpioDefs;
 boost::asio::io_context io;
 
 int main(void)
+try
 {
     int ret = 0;
 
@@ -115,4 +118,11 @@ int main(void)
     std::for_each(allBtnCfgs.begin(), allBtnCfgs.end(),
                   [](auto& cfg) { cfg.gpios.clear(); });
     return ret;
+}
+catch (const std::exception& e)
+{
+    phosphor::logging::log<phosphor::logging::level::ERR>(
+        "phosphor-buttons terminated by exception");
+    phosphor::logging::log<phosphor::logging::level::ERR>(e.what());
+    return EXIT_FAILURE;
 }
