@@ -35,14 +35,14 @@
 static constexpr std::string_view POWER_BUTTON = "POWER_BUTTON";
 
 class PowerButton :
-    public sdbusplus::server::object::object<
+    public sdbusplus::server::object_t<
         sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::Power>,
     public ButtonIface
 {
   public:
-    PowerButton(sdbusplus::bus::bus& bus, const char* path,
+    PowerButton(sdbusplus::bus_t& bus, const char* path,
                 buttonConfig& buttonCfg, boost::asio::io_context& io) :
-        sdbusplus::server::object::object<
+        sdbusplus::server::object_t<
             sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::Power>(
             bus, path),
         ButtonIface(bus, buttonCfg, io)

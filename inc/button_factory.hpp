@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 using buttonIfCreatorMethod = std::function<std::unique_ptr<ButtonIface>(
-    sdbusplus::bus::bus& bus, buttonConfig& buttonCfg,
+    sdbusplus::bus_t& bus, buttonConfig& buttonCfg,
     boost::asio::io_context& io)>;
 
 /**
@@ -37,7 +37,7 @@ class ButtonFactory
     void addToRegistry()
     {
         buttonIfaceRegistry[std::string(T::getFormFactorName())] =
-            [](sdbusplus::bus::bus& bus, buttonConfig& buttonCfg,
+            [](sdbusplus::bus_t& bus, buttonConfig& buttonCfg,
                boost::asio::io_context& io) {
             return std::make_unique<T>(bus, T::getDbusObjectPath(), buttonCfg,
                                        io);
@@ -48,7 +48,7 @@ class ButtonFactory
      *    corresponding to the button formfactor name provided
      */
     std::unique_ptr<ButtonIface> createInstance(const std::string& name,
-                                                sdbusplus::bus::bus& bus,
+                                                sdbusplus::bus_t& bus,
                                                 buttonConfig& buttonCfg,
                                                 boost::asio::io_context& io)
     {

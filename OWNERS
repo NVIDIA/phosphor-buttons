@@ -32,9 +32,9 @@
 # data within them will be kept sorted.
 
 owners:
-- kuiying.wang@intel.com
+- wangkuiying.wky@alibaba-inc.com
 - spinler@us.ibm.com
-- vernon.mauery@linux.intel.com
+- vernon.mauery@gmail.com
 
 reviewers:
 
@@ -42,11 +42,11 @@ matchers:
 
 openbmc:
 - name: Kuiying Wang
-  email: kuiying.wang@intel.com
-  discord: kuiyingw
+  email: wangkuiying.wky@alibaba-inc.com
+  discord: Kwin
 - name: Matt Spinler
   email: spinler@us.ibm.com
   discord: mspinler
 - name: Vernon Mauery
-  email: vernon.mauery@linux.intel.com
+  email: vernon.mauery@gmail.com
   discord: vmauery

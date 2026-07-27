@@ -1,0 +1,37 @@
+#pragma once
+
+#include <array>
+#include <chrono>
+
+constexpr inline auto POWER_DBUS_OBJECT_NAME =
+    "/xyz/openbmc_project/Chassis/Buttons/Power0";
+constexpr inline auto RESET_DBUS_OBJECT_NAME =
+    "/xyz/openbmc_project/Chassis/Buttons/Reset0";
+constexpr inline auto ID_DBUS_OBJECT_NAME =
+    "/xyz/openbmc_project/Chassis/Buttons/ID0";
+constexpr inline auto HS_DBUS_OBJECT_NAME =
+    "/xyz/openbmc_project/Chassis/Buttons/HostSelector";
+constexpr inline auto DBG_HS_DBUS_OBJECT_NAME =
+    "/xyz/openbmc_project/Chassis/Buttons/DebugHostSelector";
+constexpr inline auto SERIAL_CONSOLE_MUX_DBUS_OBJECT_NAME =
+    "/xyz/openbmc_project/Chassis/Buttons/SerialUartMux";
+
+constexpr inline auto CHASSIS_STATE_OBJECT_NAME =
+    "/xyz/openbmc_project/state/chassis";
+constexpr inline auto CHASSISSYSTEM_STATE_OBJECT_NAME =
+    "/xyz/openbmc_project/state/chassis_system";
+constexpr inline auto HOST_STATE_OBJECT_NAME =
+    "/xyz/openbmc_project/state/host";
+
+constexpr inline auto GPIO_BASE_LABEL_NAME = "1e780000.gpio";
+constexpr inline auto gpioDefFile = "/etc/default/obmc/gpio/gpio_defs.json";
+#define LOOKUP_GPIO_BASE @LOOKUP_GPIO_BASE@
+
+#define ENABLE_RESET_BUTTON_DO_WARM_REBOOT @ENABLE_RESET_BUTTON_DO_WARM_REBOOT@
+
+constexpr inline auto POWER_BUTTON_PROFILE = @POWER_BUTTON_PROFILE@;
+constexpr inline auto ID_LED_GROUP = @ID_LED_GROUP@;
+constexpr inline const auto LONG_PRESS_TIME_MS =
+    std::chrono::milliseconds(@LONG_PRESS_TIME_MS@);
+
+constexpr inline static auto instances = std::to_array({ @INSTANCES@ });

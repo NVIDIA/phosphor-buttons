@@ -43,7 +43,7 @@ class Handler
      *
      * @param[in] bus - sdbusplus connection object
      */
-    explicit Handler(sdbusplus::bus::bus& bus);
+    explicit Handler(sdbusplus::bus_t& bus);
 
   private:
     /**
@@ -54,7 +54,7 @@ class Handler
      *
      * @param[in] msg - sdbusplus message from signal
      */
-    void powerReleased(sdbusplus::message::message& msg);
+    void powerReleased(sdbusplus::message_t& msg);
 
     /**
      * @brief The handler for a long power button press
@@ -64,7 +64,7 @@ class Handler
      *
      * @param[in] msg - sdbusplus message from signal
      */
-    void longPowerPressed(sdbusplus::message::message& msg);
+    void longPowerPressed(sdbusplus::message_t& msg);
 
     /**
      * @brief The handler for an ID button press
@@ -73,7 +73,7 @@ class Handler
      *
      * @param[in] msg - sdbusplus message from signal
      */
-    void idReleased(sdbusplus::message::message& msg);
+    void idReleased(sdbusplus::message_t& msg);
 
 #if UID_BUTTON_FUNCTION
     /**
@@ -84,7 +84,7 @@ class Handler
      *
      * @param[in] msg - sdbusplus message from signal
      */
-    void idPressedLong(sdbusplus::message::message& msg);
+    void idPressedLong(sdbusplus::message_t& msg);
 #endif
 
     /**
@@ -94,7 +94,7 @@ class Handler
      *
      * @param[in] msg - sdbusplus message from signal
      */
-    void resetReleased(sdbusplus::message::message& msg);
+    void resetReleased(sdbusplus::message_t& msg);
 
     /**
      * @brief Checks if system is powered on
@@ -139,7 +139,7 @@ class Handler
     /**
      * @brief sdbusplus connection object
      */
-    sdbusplus::bus::bus& bus;
+    sdbusplus::bus_t& bus;
 
     /**
      * @brief Matches on the power button released signal

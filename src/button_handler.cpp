@@ -39,7 +39,7 @@ constexpr auto mapperObjPath = "/xyz/openbmc_project/object_mapper";
 constexpr auto mapperService = "xyz.openbmc_project.ObjectMapper";
 constexpr auto BMC_POSITION = 0;
 
-Handler::Handler(sdbusplus::bus::bus& bus) : bus(bus)
+Handler::Handler(sdbusplus::bus_t& bus) : bus(bus)
 {
     try
     {
@@ -144,7 +144,7 @@ std::string Handler::getService(const std::string& path,
     auto result = bus.call(method);
 
     std::map<std::string, std::vector<std::string>> objectData;
-    result.read(objectData);
+    result.unpack(objectData);
 
     return objectData.begin()->first;
 }
@@ -166,7 +166,7 @@ size_t Handler::getHostSelectorValue()
         auto result = bus.call(method);
 
         std::variant<size_t> HSPositionVariant;
-        result.read(HSPositionVariant);
+        result.unpack(HSPositionVariant);
 
         auto position = std::get<size_t>(HSPositionVariant);
         return position;
@@ -188,7 +188,7 @@ bool Handler::poweredOn(size_t hostNumber) const
     auto result = bus.call(method);
 
     std::variant<std::string> state;
-    result.read(state);
+    result.unpack(state);
 
     return Chassis::PowerState::On ==
            Chassis::convertPowerStateFromString(std::get<std::string>(state));
@@ -302,7 +302,7 @@ void Handler::handlePowerEvent(PowerEvent powerEventType)
     method.append(dbusIfaceName, transitionName, transition);
     bus.call(method);
 }
-void Handler::powerReleased(sdbusplus::message::message& /* msg */)
+void Handler::powerReleased(sdbusplus::message_t& /* msg */)
 {
     try
     {
@@ -314,7 +314,7 @@ void Handler::powerReleased(sdbusplus::message::message& /* msg */)
                    "ERROR", e);
     }
 }
-void Handler::longPowerPressed(sdbusplus::message::message& /* msg */)
+void Handler::longPowerPressed(sdbusplus::message_t& /* msg */)
 {
     try
     {
@@ -327,7 +327,7 @@ void Handler::longPowerPressed(sdbusplus::message::message& /* msg */)
     }
 }
 
-void Handler::resetReleased(sdbusplus::message::message& /* msg */)
+void Handler::resetReleased(sdbusplus::message_t& /* msg */)
 {
     try
     {
@@ -340,7 +340,7 @@ void Handler::resetReleased(sdbusplus::message::message& /* msg */)
     }
 }
 
-void Handler::idReleased(sdbusplus::message::message& /* msg */)
+void Handler::idReleased(sdbusplus::message_t& /* msg */)
 {
     std::string groupPath{ledGroupBasePath};
     groupPath += ID_LED_GROUP;
@@ -362,7 +362,7 @@ void Handler::idReleased(sdbusplus::message::message& /* msg */)
         auto result = bus.call(method);
 
         std::variant<bool> state;
-        result.read(state);
+        result.unpack(state);
 
         state = !std::get<bool>(state);
 
@@ -387,7 +387,7 @@ void Handler::idReleased(sdbusplus::message::message& /* msg */)
 namespace
 {
 
-void eventLog(sdbusplus::bus::bus& bus, const std::string& message,
+void eventLog(sdbusplus::bus_t& bus, const std::string& message,
               const std::string& severity)
 {
     try
@@ -405,7 +405,7 @@ void eventLog(sdbusplus::bus::bus& bus, const std::string& message,
     }
 }
 
-void factoryReset(sdbusplus::bus::bus& bus)
+void factoryReset(sdbusplus::bus_t& bus)
 {
     int val = std::system("fw_setenv openbmconce factory-reset");
     if (val == 0)
@@ -529,7 +529,7 @@ int pamUpdatePassword(const std::string& username, const std::string& password)
     return pam_end(localAuthHandle, PAM_SUCCESS);
 }
 
-void passwordReset(sdbusplus::bus::bus& bus)
+void passwordReset(sdbusplus::bus_t& bus)
 {
     auto ret = pamUpdatePassword(USERNAME, PASSWORD);
     if (ret == PAM_SUCCESS)
@@ -557,12 +557,12 @@ void passwordReset(sdbusplus::bus::bus& bus)
 
 } // namespace
 
-void Handler::idPressedLong(sdbusplus::message::message& msg)
+void Handler::idPressedLong(sdbusplus::message_t& msg)
 {
     try
     {
         uint64_t milliseconds = 0;
-        msg.read(milliseconds);
+        msg.unpack(milliseconds);
 
         if (milliseconds >= static_cast<uint64_t>(UID_FACTORY_RESET_TIME_MSEC))
         {
