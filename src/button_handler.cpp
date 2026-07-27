@@ -144,7 +144,7 @@ std::string Handler::getService(const std::string& path,
     auto result = bus.call(method);
 
     std::map<std::string, std::vector<std::string>> objectData;
-    result.unpack(objectData);
+    result.read(objectData);
 
     return objectData.begin()->first;
 }
@@ -166,7 +166,7 @@ size_t Handler::getHostSelectorValue()
         auto result = bus.call(method);
 
         std::variant<size_t> HSPositionVariant;
-        result.unpack(HSPositionVariant);
+        result.read(HSPositionVariant);
 
         auto position = std::get<size_t>(HSPositionVariant);
         return position;
@@ -188,7 +188,7 @@ bool Handler::poweredOn(size_t hostNumber) const
     auto result = bus.call(method);
 
     std::variant<std::string> state;
-    result.unpack(state);
+    result.read(state);
 
     return Chassis::PowerState::On ==
            Chassis::convertPowerStateFromString(std::get<std::string>(state));
@@ -362,7 +362,7 @@ void Handler::idReleased(sdbusplus::message_t& /* msg */)
         auto result = bus.call(method);
 
         std::variant<bool> state;
-        result.unpack(state);
+        result.read(state);
 
         state = !std::get<bool>(state);
 
@@ -562,7 +562,7 @@ void Handler::idPressedLong(sdbusplus::message_t& msg)
     try
     {
         uint64_t milliseconds = 0;
-        msg.unpack(milliseconds);
+        msg.read(milliseconds);
 
         if (milliseconds >= static_cast<uint64_t>(UID_FACTORY_RESET_TIME_MSEC))
         {
