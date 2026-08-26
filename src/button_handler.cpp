@@ -29,8 +29,6 @@ constexpr auto ledGroupIface = "xyz.openbmc_project.Led.Group";
 constexpr auto ledGroupBasePath = "/xyz/openbmc_project/led/groups/";
 constexpr auto hostSelectorIface =
     "xyz.openbmc_project.Chassis.Buttons.HostSelector";
-constexpr auto debugHostSelectorIface =
-    "xyz.openbmc_project.Chassis.Buttons.DebugHostSelector";
 
 constexpr auto propertyIface = "org.freedesktop.DBus.Properties";
 constexpr auto mapperIface = "xyz.openbmc_project.ObjectMapper";
