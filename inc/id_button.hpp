@@ -39,8 +39,8 @@ class IDButton :
     public ButtonIface
 {
   public:
-    IDButton(sdbusplus::bus_t& bus, const char* path,
-             buttonConfig& buttonCfg, boost::asio::io_context& io) :
+    IDButton(sdbusplus::bus_t& bus, const char* path, buttonConfig& buttonCfg,
+             boost::asio::io_context& io) :
         sdbusplus::server::object_t<
             sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::ID>(
             bus, path),
