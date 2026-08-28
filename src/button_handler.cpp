@@ -9,9 +9,12 @@
 #if UID_BUTTON_FUNCTION
 #include <security/pam_appl.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <span>
+#include <string>
+#include <thread>
 #endif
 namespace phosphor
 {
@@ -145,6 +148,11 @@ std::string Handler::getService(const std::string& path,
 
     std::map<std::string, std::vector<std::string>> objectData;
     result.read(objectData);
+
+    if (objectData.empty())
+    {
+        return {};
+    }
 
     return objectData.begin()->first;
 }
@@ -557,6 +565,65 @@ void passwordReset(sdbusplus::bus::bus& bus)
 
 } // namespace
 
+bool Handler::setLedGroupAsserted(const std::string& group, bool asserted)
+{
+    std::string groupPath{ledGroupBasePath};
+    groupPath += group;
+
+    std::string service;
+    try
+    {
+        service = getService(groupPath, ledGroupIface);
+    }
+    catch (const sdbusplus::exception::exception&)
+    {
+        // Missing LED group must not abort the reset action.
+    }
+
+    if (service.empty())
+    {
+        lg2::info("LED group {GROUP} not found, skipping", "GROUP", groupPath);
+        return false;
+    }
+
+    try
+    {
+        auto method = bus.new_method_call(service.c_str(), groupPath.c_str(),
+                                          propertyIface, "Set");
+        method.append(ledGroupIface, "Asserted", std::variant<bool>(asserted));
+        bus.call(method);
+        return true;
+    }
+    catch (const sdbusplus::exception::exception& e)
+    {
+        lg2::error(
+            "Failed to set Asserted on LED group, GROUP = {GROUP}, STATE = {STATE}, ERROR = {ERROR}",
+            "GROUP", groupPath, "STATE", asserted, "ERROR", e);
+        return false;
+    }
+}
+
+void Handler::hintResetPending(std::chrono::milliseconds duration)
+{
+    lg2::info(
+        "Hinting pending reset: turning off LED group {IDGROUP} and asserting {HINTGROUP}",
+        "IDGROUP", std::string(ID_LED_GROUP), "HINTGROUP",
+        std::string(UID_RESET_HINT_LED_GROUP));
+
+    // led-manager skips Blink -> Blink, so identify must go first or the hint
+    // silently keeps identify's period. Not restored afterwards.
+    setLedGroupAsserted(ID_LED_GROUP, false);
+
+    if (!setLedGroupAsserted(UID_RESET_HINT_LED_GROUP, true))
+    {
+        // No hint LED to show: don't delay the reset.
+        return;
+    }
+
+    std::this_thread::sleep_for(duration);
+    setLedGroupAsserted(UID_RESET_HINT_LED_GROUP, false);
+}
+
 void Handler::idPressedLong(sdbusplus::message::message& msg)
 {
     try
@@ -568,12 +635,16 @@ void Handler::idPressedLong(sdbusplus::message::message& msg)
         {
             lg2::info("UID button held {MSEC}ms: performing factory reset",
                       "MSEC", milliseconds);
+            hintResetPending(
+                std::chrono::milliseconds(UID_FACTORY_RESET_HINT_MSEC));
             factoryReset(bus);
         }
         else
         {
             lg2::info("UID button held {MSEC}ms: performing password reset",
                       "MSEC", milliseconds);
+            hintResetPending(
+                std::chrono::milliseconds(UID_PASSWORD_RESET_HINT_MSEC));
             passwordReset(bus);
         }
     }
