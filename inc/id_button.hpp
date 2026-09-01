@@ -34,14 +34,14 @@
 static constexpr std::string_view ID_BUTTON = "ID_BTN";
 
 class IDButton :
-    public sdbusplus::server::object::object<
+    public sdbusplus::server::object_t<
         sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::ID>,
     public ButtonIface
 {
   public:
-    IDButton(sdbusplus::bus::bus& bus, const char* path,
-             buttonConfig& buttonCfg, boost::asio::io_context& io) :
-        sdbusplus::server::object::object<
+    IDButton(sdbusplus::bus_t& bus, const char* path, buttonConfig& buttonCfg,
+             boost::asio::io_context& io) :
+        sdbusplus::server::object_t<
             sdbusplus::xyz::openbmc_project::Chassis::Buttons::server::ID>(
             bus, path),
         ButtonIface(bus, buttonCfg, io)

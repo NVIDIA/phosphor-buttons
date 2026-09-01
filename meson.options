@@ -1,0 +1,87 @@
+option(
+    'id-led-group',
+    type: 'string',
+    value: 'enclosure_identify',
+    description: 'The identify LED group name',
+)
+
+option(
+    'long-press-time-ms',
+    type: 'integer',
+    value: 3000,
+    description: 'Time to long press the button',
+)
+
+option(
+    'lookup-gpio-base',
+    type: 'feature',
+    value: 'enabled',
+    description: 'Look up the GPIO base value in /sys/class/gpio. Otherwise use a base of 0.',
+)
+
+option(
+    'power-button-profile',
+    type: 'combo',
+    choices: ['default', 'host_then_chassis_poweroff'],
+    value: 'default',
+    description: 'Used to select a custom power button behavior profile.',
+)
+
+option(
+    'reset-button-do-warm-reboot',
+    type: 'feature',
+    value: 'disabled',
+    description: 'Enable warm reboot on the reset button',
+)
+
+option(
+    'host-instances',
+    type: 'string',
+    value: '0',
+    description: 'Host Instances that can be defined by project, for example: 1 2 3 4',
+)
+
+# NVIDIA UID button function: a long press of the ID (UID) button triggers a
+# password reset or factory reset, handled by the existing button-handler.
+# Disabled by default; enabled per-platform via the recipe.
+option(
+    'uid-button-function',
+    type: 'feature',
+    value: 'disabled',
+    description: 'Enable UID button password/factory reset in button-handler',
+)
+
+option(
+    'uid-password-reset-time',
+    type: 'integer',
+    value: 30000,
+    description: 'ID button press milliseconds that trigger a password reset',
+)
+
+option(
+    'uid-factory-reset-time',
+    type: 'integer',
+    value: 60000,
+    description: 'ID button press milliseconds that trigger a factory reset',
+)
+
+option(
+    'username',
+    type: 'string',
+    value: 'root',
+    description: 'Username for the UID button password reset',
+)
+
+option(
+    'password',
+    type: 'string',
+    value: '',
+    description: 'Password for the UID button password reset. Must be set per-platform when uid-button-function is enabled.',
+)
+
+option(
+    'expire-password',
+    type: 'boolean',
+    value: false,
+    description: 'Force password expiration after the UID button reset',
+)

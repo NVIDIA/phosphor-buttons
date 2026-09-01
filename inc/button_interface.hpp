@@ -13,7 +13,7 @@
 class ButtonIface
 {
   public:
-    ButtonIface(sdbusplus::bus::bus& bus, buttonConfig& buttonCfg,
+    ButtonIface(sdbusplus::bus_t& bus, buttonConfig& buttonCfg,
                 boost::asio::io_context& io,
                 const std::function<void(void*, bool, std::string)> handler =
                     ButtonIface::EventHandler) :
@@ -92,7 +92,7 @@ class ButtonIface
         }
     }
 
-    sdbusplus::bus::bus& bus;
+    sdbusplus::bus_t& bus;
     buttonConfig config;
     const std::function<void(void*, bool, std::string)> callbackHandler;
 };

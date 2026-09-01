@@ -2,8 +2,6 @@
 Description=Phosphor Button Handler
 Wants=xyz.openbmc_project.Chassis.Buttons.service
 After=xyz.openbmc_project.Chassis.Buttons.service
-Wants=obmc-mapper.target
-After=obmc-mapper.target
 
 [Service]
 Restart=always

@@ -44,7 +44,7 @@ try
     std::shared_ptr<sdbusplus::asio::connection> conn =
         std::make_shared<sdbusplus::asio::connection>(io);
 
-    sdbusplus::bus::bus bus = sdbusplus::bus::new_default();
+    sdbusplus::bus_t bus = sdbusplus::bus::new_default();
     sdbusplus::server::manager::manager objManager{
         bus, "/xyz/openbmc_project/Chassis/Buttons"};
 
@@ -81,9 +81,9 @@ try
         }
         else
         {
-            gpioInfo gpioCfg = gpioInfo{gpioConfig["name"],
-                                        gpioConfig["gpio_name"],
-                                        gpioConfig["direction"]};
+            gpioInfo gpioCfg =
+                gpioInfo{gpioConfig["name"], gpioConfig["gpio_name"],
+                         gpioConfig["direction"]};
             buttonCfg.gpios.push_back(gpioCfg);
         }
 
