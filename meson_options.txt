@@ -63,3 +63,24 @@ option(
     value: false,
     description : 'Force password expiration after the UID button reset'
 )
+
+option(
+    'uid-reset-hint',
+    type : 'string',
+    value: 'uid_reset_hint',
+    description : 'LED group blinked on ID button release, before the reset runs'
+)
+
+option(
+    'uid-password-reset-hint-ms',
+    type : 'integer',
+    value: 1500,
+    description : 'How long to assert the password reset hint LED group'
+)
+
+option(
+    'uid-factory-reset-hint-ms',
+    type : 'integer',
+    value: 2500,
+    description : 'How long to assert the factory reset hint LED group'
+)

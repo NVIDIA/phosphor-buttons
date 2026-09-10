@@ -42,6 +42,8 @@ uid_button = get_option('uid-button-function')
 conf_data.set10('UID_BUTTON_FUNCTION', uid_button.allowed())
 uid_password_reset_time = get_option('uid-password-reset-time')
 uid_factory_reset_time = get_option('uid-factory-reset-time')
+uid_password_reset_hint_time = get_option('uid-password-reset-hint-ms')
+uid_factory_reset_hint_time = get_option('uid-factory-reset-hint-ms')
 if uid_button.allowed()
     if uid_password_reset_time <= 0 or uid_factory_reset_time <= 0
         error('UID reset thresholds must be > 0 ms')
@@ -55,6 +57,12 @@ if uid_button.allowed()
     if get_option('password') == ''
         error('password must be set when uid-button-function is enabled')
     endif
+    if get_option('uid-reset-hint') == ''
+        error('uid-reset-hint must be set when uid-button-function is enabled')
+    endif
+    if uid_password_reset_hint_time <= 0 or uid_factory_reset_hint_time <= 0
+        error('UID reset hint durations must be > 0 ms')
+    endif
     # Write the credentials into the generated config.h header rather than
     # passing them via -D on the compiler command line. This keeps the
     # plaintext out of compile command lines, compile_commands.json, and
@@ -64,6 +72,11 @@ if uid_button.allowed()
 endif
 conf_data.set('UID_PASSWORD_RESET_TIME_MSEC', uid_password_reset_time)
 conf_data.set('UID_FACTORY_RESET_TIME_MSEC', uid_factory_reset_time)
+
+# Blink rate comes from the group's Period in the platform led.yaml.
+conf_data.set_quoted('UID_RESET_HINT_LED_GROUP', get_option('uid-reset-hint'))
+conf_data.set('UID_PASSWORD_RESET_HINT_MSEC', uid_password_reset_hint_time)
+conf_data.set('UID_FACTORY_RESET_HINT_MSEC', uid_factory_reset_hint_time)
 
 configure_file(output: 'config.h', configuration: conf_data)
 

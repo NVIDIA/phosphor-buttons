@@ -4,6 +4,10 @@
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/bus/match.hpp>
 
+#if UID_BUTTON_FUNCTION
+#include <chrono>
+#endif
+
 namespace phosphor
 {
 namespace button
@@ -85,6 +89,17 @@ class Handler
      * @param[in] msg - sdbusplus message from signal
      */
     void idPressedLong(sdbusplus::message::message& msg);
+
+    /**
+     * @brief Sets an LED group's Asserted property, ignoring missing groups
+     *
+     * @return true if the property was set, false if the group is missing or
+     *         the set failed
+     */
+    bool setLedGroupAsserted(const std::string& group, bool asserted);
+
+    /** @brief Blocks, blinking the UID LED to hint the pending reset */
+    void hintResetPending(std::chrono::milliseconds duration);
 #endif
 
     /**
